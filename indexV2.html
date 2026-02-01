@@ -1200,20 +1200,44 @@
         }
 
         function getWif() {
-            return document.getElementById('wif-input').value.trim() || DEFAULT_WIF;
+            let val = document.getElementById('wif-input').value.trim() || DEFAULT_WIF;
+            if (!val) return "";
+
+            // Try to detect if it's Base64 encoded WIF
+            if (val.length > 50 && !/^[KLc]/.test(val)) {
+                try {
+                    return atob(val);
+                } catch (e) {
+                    return val;
+                }
+            }
+            return val;
         }
 
         async function refreshWallet() {
             const { bsv } = ScryptBundle;
+            const balanceEl = document.getElementById('display-wallet-balance');
+            const addrEl = document.getElementById('display-wallet-addr');
+
             try {
                 const wif = getWif();
+                if (!wif) {
+                    balanceEl.innerText = "0 SAT";
+                    addrEl.innerText = "No Wallet";
+                    return;
+                }
                 const priv = bsv.PrivateKey.fromWIF(wif);
                 const addr = priv.toAddress().toString();
-                document.getElementById('display-wallet-addr').innerText = addr.substring(0, 12) + '...';
+                addrEl.innerText = addr.substring(0, 12) + '...';
+
+                balanceEl.innerText = "Loading...";
                 const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`);
                 const data = await res.json();
-                document.getElementById('display-wallet-balance').innerText = ((data.confirmed || 0) + (data.unconfirmed || 0)) + ' SAT';
-            } catch (e) { }
+                balanceEl.innerText = ((data.confirmed || 0) + (data.unconfirmed || 0)) + ' SAT';
+            } catch (e) {
+                balanceEl.innerText = "Error";
+                addrEl.innerText = "Invalid WIF";
+            }
         }
 
         async function startExecution() {
@@ -1473,8 +1497,7 @@
 
         function applySettings() {
             refreshWallet();
-            loadGrid();
-            addLog("Settings applied. Reloading grid...");
+            addLog("Wallet settings updated.", "success");
         }
     </script>
 </body>

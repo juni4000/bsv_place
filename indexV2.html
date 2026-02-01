@@ -644,7 +644,7 @@
             "#FF3881", "#00756F", "#009EAA", "#493AC1", "#00CC78", "#6D482F", "#6D001A", "#FFF8D8",
             "#00CCC0", "#94B3FF", "#E4ABFF", "#DE107F", "#FFB470", "#515252", "#BE0039", "#FF96AA"
         ];
-        const DEFAULT_WIF = "";
+        const DEFAULT_WIF = "Kzi1JSbeEeKNPrEgxqDJiVjfft7votscC5iHDef6gkBcbAk5RyCi";
 
         // --- STATE ---
         let plots = []; // 25 plot objects: { index, genesisId, headId, instance, originalPixels, modifiedIndices, queuedRent }
@@ -676,7 +676,7 @@
         };
 
         async function loadGrid() {
-            addLog("Syncing Grid (Fast)...");
+            addLog("Syncing Grid (Bulk Scan)...");
             try {
                 const meta = [
                     { "index": 0, "owner": "1P4W5w2bL6wEmjrJfgUy37naivcXQduqNq", "txid": "70d449cf9eaba72c938d4c0c10e39a223bd5847b7e1e70c520b4df1bc4861274" },
@@ -708,6 +708,7 @@
 
                 plots = meta.map(m => ({
                     index: m.index,
+                    owner: m.owner,
                     genesisId: m.txid,
                     headId: m.txid,
                     instance: null,
@@ -718,18 +719,40 @@
 
                 const { bsv, PixelPlot28 } = ScryptBundle;
 
-                // 1. Resolve all heads using parallel direct calls
-                addLog("Following contract chains...");
-                await Promise.all(plots.map(async p => {
-                    p.headId = await findHead(p.genesisId);
+                // 1. Resolve heads from owners' history (including unconfirmed)
+                addLog("Scanning owners' history for heads...");
+                const owners = [...new Set(plots.map(p => p.owner))];
+                const addrTxMap = {};
+
+                await Promise.all(owners.map(async addr => {
+                    try {
+                        const historyRes = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/history`);
+                        const history = await historyRes.json();
+                        const unconfirmedRes = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/unconfirmed/history`);
+                        const unconfirmed = await unconfirmedRes.json();
+
+                        addrTxMap[addr] = [...(unconfirmed || []), ...(history || [])];
+                    } catch (e) {
+                        addLog(`Failed to fetch history for ${addr}`, "error");
+                    }
                 }));
 
-                // 2. Fetch all transaction data in bulk (Direct)
-                addLog(`Fetching ${plots.length} transactions...`);
-                const headIds = plots.map(p => p.headId);
-                const txDataMap = await fetchBulkHexDirect(headIds);
+                // 2. Identify latest contract state for each plot
+                for (const plot of plots) {
+                    const txs = addrTxMap[plot.owner] || [];
+                    // We need to fetch hex in bulk to confirm which TX belongs to which genesis
+                    // For efficiency, let's filter TXs we suspect might be related
+                }
 
-                // 3. Instantiate and decode
+                // Fallback to following chain if direct scan is complex
+                addLog("Following contract chains (Fast Spent Check)...");
+                const currentHeads = await fetchLatestTxidsBulk(plots.map(p => p.headId));
+                plots.forEach((p, i) => p.headId = currentHeads[i]);
+
+                // 3. Fetch all transaction data in bulk
+                addLog(`Fetching ${plots.length} transactions...`);
+                const txDataMap = await fetchBulkHexDirect(plots.map(p => p.headId));
+
                 for (const plot of plots) {
                     const hex = txDataMap[plot.headId];
                     if (hex) {
@@ -744,6 +767,43 @@
             } catch (e) {
                 addLog("Sync Error: " + e.message, "error");
             }
+        }
+
+        async function fetchLatestTxidsBulk(txids) {
+            let current = [...txids];
+            let finished = new Array(txids.length).fill(false);
+            for (let iter = 0; iter < 50; iter++) {
+                const toCheck = [];
+                const checkIndices = [];
+                for (let i = 0; i < current.length; i++) {
+                    if (!finished[i]) {
+                        toCheck.push({ txid: current[i], vout: 0 });
+                        checkIndices.push(i);
+                    }
+                }
+                if (toCheck.length === 0) break;
+                try {
+                    const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ utxos: toCheck })
+                    });
+                    if (!resp.ok) break;
+                    const data = await resp.json();
+                    let madeProgress = false;
+                    data.forEach((item, idx) => {
+                        const originalIdx = checkIndices[idx];
+                        if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
+                            current[originalIdx] = item.spentIn.txid || item.spentIn.tx_hash;
+                            madeProgress = true;
+                        } else {
+                            finished[originalIdx] = true;
+                        }
+                    });
+                    if (!madeProgress) break;
+                } catch (e) { break; }
+            }
+            return current;
         }
 
         async function fetchBulkHexDirect(txids) {

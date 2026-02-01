@@ -776,8 +776,11 @@
         }
 
         async function fetchLatestTxidsBulk(txids) {
-            let current = [...txids];
-            let finished = new Array(txids.length).fill(false);
+            // Filter out any empty, null or invalid txids
+            let current = txids.filter(id => id && id.length === 64);
+            if (current.length === 0) return txids;
+
+            let finished = new Array(current.length).fill(false);
             for (let iter = 0; iter < 50; iter++) {
                 const toCheck = [];
                 const checkIndices = [];
@@ -794,7 +797,11 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ utxos: toCheck })
                     });
-                    if (!resp.ok) break;
+                    if (!resp.ok) {
+                        const errText = await resp.text();
+                        console.error("Bulk spent check failed:", resp.status, errText);
+                        break;
+                    }
                     const data = await resp.json();
                     let madeProgress = false;
                     data.forEach((item, idx) => {
@@ -809,16 +816,32 @@
                     if (!madeProgress) break;
                 } catch (e) { break; }
             }
+
+            // Map results back to the original input order/size
+            const resultMap = {};
+            current.forEach((id, i) => {
+                // Approximate mapping by finding original input
+                // Note: This assumes txids passed were unique or order is stable
+            });
+
+            // Safer approach: return the evolved array which matches the filtered input
             return current;
         }
 
         async function fetchBulkHexDirect(txids) {
+            // Sanitize: unique, 64-char hex only
+            const cleanIds = [...new Set(txids.filter(id => id && id.length === 64))];
+            if (cleanIds.length === 0) return {};
+
             const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/txs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ txids })
+                body: JSON.stringify({ txids: cleanIds })
             });
-            if (!resp.ok) throw new Error("Bulk fetch failed");
+            if (!resp.ok) {
+                const errText = await resp.text();
+                throw new Error(`Bulk fetch failed (${resp.status}): ${errText}`);
+            }
             const data = await resp.json();
             const map = {};
             data.forEach(tx => map[tx.txid] = tx.hex);

@@ -776,32 +776,41 @@
         }
 
         async function fetchLatestTxidsBulk(txids) {
-            // Filter out any empty, null or invalid txids
-            let current = txids.filter(id => id && id.length === 64);
-            if (current.length === 0) return txids;
+            addLog(`Following ${txids.length} txids...`);
+            let current = [...txids];
+            let finished = new Array(txids.length).fill(false);
 
-            let finished = new Array(current.length).fill(false);
             for (let iter = 0; iter < 50; iter++) {
                 const toCheck = [];
                 const checkIndices = [];
                 for (let i = 0; i < current.length; i++) {
-                    if (!finished[i]) {
-                        toCheck.push({ txid: current[i], vout: 0 });
+                    const id = current[i];
+                    if (!finished[i] && id && id.length === 64) {
+                        toCheck.push({ txid: id, vout: 0 });
                         checkIndices.push(i);
+                    } else if (!finished[i]) {
+                        // Mark invalid as finished to avoid infinite loop
+                        finished[i] = true;
                     }
                 }
+
                 if (toCheck.length === 0) break;
+
                 try {
+                    const body = JSON.stringify({ utxos: toCheck });
                     const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ utxos: toCheck })
+                        body: body
                     });
+
                     if (!resp.ok) {
                         const errText = await resp.text();
-                        console.error("Bulk spent check failed:", resp.status, errText);
+                        addLog(`Spent check 400: ${errText.substring(0, 50)}`, "error");
+                        console.error("Body sent:", body);
                         break;
                     }
+
                     const data = await resp.json();
                     let madeProgress = false;
                     data.forEach((item, idx) => {
@@ -814,17 +823,11 @@
                         }
                     });
                     if (!madeProgress) break;
-                } catch (e) { break; }
+                } catch (e) {
+                    addLog(`Spent check catch: ${e.message}`, "error");
+                    break;
+                }
             }
-
-            // Map results back to the original input order/size
-            const resultMap = {};
-            current.forEach((id, i) => {
-                // Approximate mapping by finding original input
-                // Note: This assumes txids passed were unique or order is stable
-            });
-
-            // Safer approach: return the evolved array which matches the filtered input
             return current;
         }
 
@@ -833,19 +836,34 @@
             const cleanIds = [...new Set(txids.filter(id => id && id.length === 64))];
             if (cleanIds.length === 0) return {};
 
-            const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/txs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ txids: cleanIds })
-            });
-            if (!resp.ok) {
-                const errText = await resp.text();
-                throw new Error(`Bulk fetch failed (${resp.status}): ${errText}`);
+            addLog(`Fetching ${cleanIds.length} unique HEXs...`);
+            try {
+                const body = JSON.stringify({ txids: cleanIds });
+                const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/txs/hex', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: body
+                });
+
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    addLog(`Fetch HEX 400: ${errText.substring(0, 50)}`, "error");
+                    console.error("Body sent:", body);
+                    throw new Error(`Bulk fetch failed (${resp.status}): ${errText}`);
+                }
+
+                const data = await resp.json();
+                const map = {};
+                data.forEach(item => {
+                    if (item && item.txid && item.hex) {
+                        map[item.txid] = item.hex;
+                    }
+                });
+                return map;
+            } catch (e) {
+                addLog(`HEX Fetch Error: ${e.message}`, "error");
+                throw e;
             }
-            const data = await resp.json();
-            const map = {};
-            data.forEach(tx => map[tx.txid] = tx.hex);
-            return map;
         }
 
         async function findHead(txid, outIdx = 0) {

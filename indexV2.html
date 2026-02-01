@@ -719,30 +719,36 @@
 
                 const { bsv, PixelPlot28 } = ScryptBundle;
 
-                // 1. Resolve heads from owners' history (including unconfirmed)
-                addLog("Scanning owners' history for heads...");
+                // 1. Resolve heads from owners' history (Bulk)
+                addLog("Scanning owners' history for heads (Bulk)...");
                 const owners = [...new Set(plots.map(p => p.owner))];
                 const addrTxMap = {};
 
-                await Promise.all(owners.map(async addr => {
+                // Max 20 addresses per request
+                for (let i = 0; i < owners.length; i += 20) {
+                    const batch = owners.slice(i, i + 20);
                     try {
-                        const historyRes = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/history`);
-                        const history = await historyRes.json();
-                        const unconfirmedRes = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/unconfirmed/history`);
-                        const unconfirmed = await unconfirmedRes.json();
-
-                        addrTxMap[addr] = [...(unconfirmed || []), ...(history || [])];
+                        const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/addresses/history/all', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ addresses: batch })
+                        });
+                        const results = await resp.json();
+                        results.forEach(res => {
+                            const combined = [
+                                ...(res.unconfirmed?.result || []),
+                                ...(res.confirmed?.result || [])
+                            ];
+                            addrTxMap[res.address] = combined;
+                        });
                     } catch (e) {
-                        addLog(`Failed to fetch history for ${addr}`, "error");
+                        addLog(`Bulk history fetch error: ${e.message}`, "error");
                     }
-                }));
+                }
 
                 // 2. Identify latest contract state for each plot
-                for (const plot of plots) {
-                    const txs = addrTxMap[plot.owner] || [];
-                    // We need to fetch hex in bulk to confirm which TX belongs to which genesis
-                    // For efficiency, let's filter TXs we suspect might be related
-                }
+                // We'll still use fetchLatestTxidsBulk because it's the fastest way to follow the spend chain,
+                // but we can cross-reference with history if needed.
 
                 // Fallback to following chain if direct scan is complex
                 addLog("Following contract chains (Fast Spent Check)...");

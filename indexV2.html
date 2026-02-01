@@ -788,44 +788,47 @@
                         toCheck.push({ txid: id, vout: 0 });
                         checkIndices.push(i);
                     } else if (!finished[i]) {
-                        // Mark invalid as finished to avoid infinite loop
                         finished[i] = true;
                     }
                 }
 
                 if (toCheck.length === 0) break;
 
-                try {
-                    const body = JSON.stringify({ utxos: toCheck });
-                    const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: body
-                    });
+                // Batch the spent check (Whatsonchain limit is usually 20)
+                let madeProgressInIter = false;
+                for (let b = 0; b < toCheck.length; b += 20) {
+                    const batch = toCheck.slice(b, b + 20);
+                    const batchIndices = checkIndices.slice(b, b + 20);
+                    try {
+                        const body = JSON.stringify({ utxos: batch });
+                        const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: body
+                        });
 
-                    if (!resp.ok) {
-                        const errText = await resp.text();
-                        addLog(`Spent check 400: ${errText.substring(0, 50)}`, "error");
-                        console.error("Body sent:", body);
-                        break;
-                    }
-
-                    const data = await resp.json();
-                    let madeProgress = false;
-                    data.forEach((item, idx) => {
-                        const originalIdx = checkIndices[idx];
-                        if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
-                            current[originalIdx] = item.spentIn.txid || item.spentIn.tx_hash;
-                            madeProgress = true;
-                        } else {
-                            finished[originalIdx] = true;
+                        if (!resp.ok) {
+                            const errText = await resp.text();
+                            addLog(`Spent check failed: ${errText.substring(0, 50)}`, "error");
+                            console.error("Payload causing 400:", body);
+                            continue;
                         }
-                    });
-                    if (!madeProgress) break;
-                } catch (e) {
-                    addLog(`Spent check catch: ${e.message}`, "error");
-                    break;
+
+                        const data = await resp.json();
+                        data.forEach((item, idx) => {
+                            const originalIdx = batchIndices[idx];
+                            if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
+                                current[originalIdx] = item.spentIn.txid || item.spentIn.tx_hash;
+                                madeProgressInIter = true;
+                            } else {
+                                finished[originalIdx] = true;
+                            }
+                        });
+                    } catch (e) {
+                        addLog(`Spent check error: ${e.message}`, "error");
+                    }
                 }
+                if (!madeProgressInIter) break;
             }
             return current;
         }
@@ -1200,18 +1203,24 @@
         }
 
         function getWif() {
+            const { bsv } = ScryptBundle;
             let val = document.getElementById('wif-input').value.trim() || DEFAULT_WIF;
             if (!val) return "";
 
-            // Try to detect if it's Base64 encoded WIF
-            if (val.length > 50 && !/^[KLc]/.test(val)) {
+            // Try as-is
+            try {
+                bsv.PrivateKey.fromWIF(val);
+                return val;
+            } catch (e) {
+                // Try Base64 decoding
                 try {
-                    return atob(val);
-                } catch (e) {
-                    return val;
+                    let decoded = atob(val);
+                    bsv.PrivateKey.fromWIF(decoded);
+                    return decoded;
+                } catch (e2) {
+                    return val; // Return raw if both fail, refreshWallet will handle error
                 }
             }
-            return val;
         }
 
         async function refreshWallet() {

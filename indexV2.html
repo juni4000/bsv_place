@@ -1285,7 +1285,6 @@
 
                 nextInstance.renters[q] = PubKeyHash(toByteString(pkh));
                 nextInstance.rentEnds[q] = BigInt(tx.nLockTime) + numBlocks;
-
                 tx.addInput(current.buildContractInput());
 
                 // 1. Contract State Output
@@ -1305,14 +1304,14 @@
                     tx.change(options.changeAddress);
                 }
 
-                return { tx, atInputIndex: 0, nexts: [{ instance: nextInstance, atOutputIndex: 0 }] };
+                return { tx, atInputIndex: 0, nexts: [{ instance: nextInstance, atOutputIndex: 0, balance: current.utxo.satoshis }] };
             });
 
             const txResult = await plot.instance.methods.rent(
                 BigInt(q),
                 PubKeyHash(toByteString(pkh)),
                 numBlocks,
-                { changeAddress: priv.toAddress(), feePerKb: feeRate }
+                { changeAddress: priv.toAddress(), feePerKb: feeRate, lockTime: 0 }
             );
 
             plot.instance = txResult.next ? txResult.next.instance : plot.instance;
@@ -1380,7 +1379,7 @@
                     }
                 }
 
-                nextInstance.pixels = bigintToLEHex(pixelsInt, 490);
+                nextInstance.pixels = toByteString(bigintToLEHex(pixelsInt, 490));
 
                 tx.addInput(current.buildContractInput());
 
@@ -1414,12 +1413,13 @@
                 }
 
                 addLog(`DEBUG: Plot ${plot.index} Sim -> Owner:${ownerGain}, Renters:${renterGains.join(',')}`);
-                return { tx, atInputIndex: 0, nexts: [{ instance: nextInstance, atOutputIndex: 0 }] };
+                return { tx, atInputIndex: 0, nexts: [{ instance: nextInstance, atOutputIndex: 0, balance: current.utxo.satoshis }] };
             });
 
             const txResult = await plot.instance.methods.updatePixels(updates, BigInt(numUpdates), {
                 changeAddress: priv.toAddress(),
-                feePerKb: feeRate
+                feePerKb: feeRate,
+                lockTime: 0
             });
 
             plot.instance = txResult.next ? txResult.next.instance : plot.instance;

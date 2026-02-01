@@ -665,58 +665,60 @@
         // --- INIT ---
         window.onload = async () => {
             initPalette();
+            // Pre-initialize plots so interaction is possible immediately
+            initPlotsMetadata();
             initGrid();
             initPanZoom();
-            await refreshWallet();
-            await loadGrid();
+            refreshWallet(); // Don't await, let it run
+            loadGrid();     // Run sync in background
             updatePriceLabel();
-
-            // Show bottom shelf correctly
             document.getElementById('bottom-shelf').classList.add('visible');
         };
+
+        function initPlotsMetadata() {
+            const meta = [
+                { "index": 0, "owner": "1P4W5w2bL6wEmjrJfgUy37naivcXQduqNq", "txid": "70d449cf9eaba72c938d4c0c10e39a223bd5847b7e1e70c520b4df1bc4861274" },
+                { "index": 1, "owner": "17FK3tdKqa5vD2VLFw9gECasDSVfPKKzgM", "txid": "0dba2e22c37bce02dcfb692f1a7abf6777d3a9c806f87c01eaa3ad5f8c9d6f15" },
+                { "index": 2, "owner": "114aQeouD8puU1m4QcTBXA7Zam8CYuGDDi", "txid": "c0b2b41b7b72f7fad170a05fdfc5093ae0a6c9ca70b02da1af73a763ab08468c" },
+                { "index": 3, "owner": "1PGNR2KMikwwN9m1rvNAgZBCBrZUr5eHbJ", "txid": "67098ef152a47fc4e7240ab19db4235a144bec3add859648e8e4ba44d86cb9fe" },
+                { "index": 4, "owner": "15pRFCaqTZZS1atfxyeJ9AAPK3fVYbuAAV", "txid": "6d80dad3de1f6c4d9c31dd6d084364d14e1f79aca2d280bfd572e6277ec2f73e" },
+                { "index": 5, "owner": "1Ab9TYd3ht1vXQMb3v64FY3iAkpowr7hJJ", "txid": "51b347cf443a1f2eafd0e24399011f5953868e641882991e8836bbed09fcc831" },
+                { "index": 6, "owner": "1GQX8HfxPRREEbCjy3Vbp57CyfhHdo3Yes", "txid": "6954c04eccbdca6b43ddd94dce099a42e04eb1437bbb2940c7d6d18807f4af5a" },
+                { "index": 7, "owner": "13gqJQv6srBua5MAKwVK6jLRKqnQivQpju", "txid": "4d99001bf2a690925c1fe8c2bada2ff5847a8eec59617ade2c3626e6279754e7" },
+                { "index": 8, "owner": "16p13WZgWGqENoFvoaQ1kexT2ZEXBYfw3b", "txid": "7a2f137c1dd992a40fc66d27ef52f88c2792e4c5b4de0602cccb9cffe66d8f2e" },
+                { "index": 9, "owner": "1HPU58vxvwr9gg2Fh6obvw7cedPVUpQacY", "txid": "14d7e2f401e30fd539e20b7c5511761a1d48e8c0d1bc1597bf5ee54c8283dae4" },
+                { "index": 10, "owner": "1GfrZQHrv2o9CrPLW3t45j7ePGG1hvxB4r", "txid": "dd83d593013d931791c70492c2ef87115fdc73c6e2bf353744e8341676cda8f4" },
+                { "index": 11, "owner": "13Q7EjhxxU79xwHCZSjx5BcRJPtwBHM1wi", "txid": "a8ede2cc68e81ed8e94a4546fafd32115e25eb23e7b41762fe543e29dcae0c35" },
+                { "index": 12, "owner": "121CH8s6r7xbS6SmPfbYY1M6k6HLxTP5D3", "txid": "a15c037de72a403d96cb8069be2765a5a54eadad157abbefc40491e3cf08e0c8" },
+                { "index": 13, "owner": "19MB7X2DdWhuf8mYvi1QXPocdkivi726qX", "txid": "26b2e6dc26423132127ec14e7d0558e422d9896c8b06a6fb6d4d623401c749f1" },
+                { "index": 14, "owner": "1GqKQvHq7Yd127ZHZoQqod2hZsF8iDFneW", "txid": "c42cde33048ddb7c0b9a9b7cda53f5c967b66dba8cb5a48dec022412da8596a6" },
+                { "index": 15, "owner": "1C1U2X9U74CVd1WQrFQianAbFrPtcTdCyE", "txid": "80d93781c543f1965c40b95529ff0c2a9bec06767a8cbf662db7e73f70b2c62a" },
+                { "index": 16, "owner": "1CTrUetoWrEGXLSzCcL3CXwU7gF7g2PWE4", "txid": "4a3f7f3d2df980757861e9e8e441ffc122b2712514504b4219d2a5ae2d1931c7" },
+                { "index": 17, "owner": "17VYrhG27V2tMB3Jv9rmMHoDaV32BNmtre", "txid": "aa29b7ef34da69c7fbbe39f83d16a725201e37313ac94081f0571aa61163ae9a" },
+                { "index": 18, "owner": "1J5m332nTUE1L1qHh6SLJyAzyRorcDAJsi", "txid": "0053a5d5c76f6c579930685c192a36ce06c3fb1778a1890fed80ef48e2ed5288" },
+                { "index": 19, "owner": "13LrNQNfYo14i6w4wHJpq97VjEcm12Uuix", "txid": "253300b2966a64b15101137c811870b46788a69be4fb2dcaa0c9f03e2ebf1f41" },
+                { "index": 20, "owner": "1PJ2UJkiWrP3KtEQi8TrGtaZquipDAGF4Q", "txid": "5d629ce322a7c485f26c3fee98d3b5b6779ebf75494e5a12ecc3b50d7de4d3ca" },
+                { "index": 21, "owner": "1CRUGtrHJ1jugxy5kG6V1Bv7YgowXHSRru", "txid": "adf80588966ff30ca1890f6c79adadb85a5355cf2ba0c1d910a2a2f0ddae7b5f" },
+                { "index": 22, "owner": "1KjNE68uihpR2efpL2MiezaCykcctQGjr6", "txid": "4b545b7f137ad3410c14c9d56cb5bb975c5a6bffa57c6246367bd6a0271eebaf" },
+                { "index": 23, "owner": "1DXEArxYN2UwPAmFjSMg6bjPpafXzS4nt2", "txid": "bb294e4845f6301c0c67db0a134d1500663154ca976f889295a048948df31dc0" },
+                { "index": 24, "owner": "1M1DDEbvcJCnmvLUVqSENWX7qTsVCAxrpc", "txid": "79718875261bba8419b2dc8aad65e58e901efebbd54f368c8f3797036afeb522" }
+            ];
+
+            plots = meta.map(m => ({
+                index: m.index,
+                owner: m.owner,
+                genesisId: m.txid,
+                headId: m.txid,
+                instance: null,
+                originalPixels: new Uint8Array(28 * 28).fill(0),
+                modifiedIndices: new Set(),
+                queuedRent: null
+            }));
+        }
 
         async function loadGrid() {
             addLog("Syncing Grid (Bulk Scan)...");
             try {
-                const meta = [
-                    { "index": 0, "owner": "1P4W5w2bL6wEmjrJfgUy37naivcXQduqNq", "txid": "70d449cf9eaba72c938d4c0c10e39a223bd5847b7e1e70c520b4df1bc4861274" },
-                    { "index": 1, "owner": "17FK3tdKqa5vD2VLFw9gECasDSVfPKKzgM", "txid": "0dba2e22c37bce02dcfb692f1a7abf6777d3a9c806f87c01eaa3ad5f8c9d6f15" },
-                    { "index": 2, "owner": "114aQeouD8puU1m4QcTBXA7Zam8CYuGDDi", "txid": "c0b2b41b7b72f7fad170a05fdfc5093ae0a6c9ca70b02da1af73a763ab08468c" },
-                    { "index": 3, "owner": "1PGNR2KMikwwN9m1rvNAgZBCBrZUr5eHbJ", "txid": "67098ef152a47fc4e7240ab19db4235a144bec3add859648e8e4ba44d86cb9fe" },
-                    { "index": 4, "owner": "15pRFCaqTZZS1atfxyeJ9AAPK3fVYbuAAV", "txid": "6d80dad3de1f6c4d9c31dd6d084364d14e1f79aca2d280bfd572e6277ec2f73e" },
-                    { "index": 5, "owner": "1Ab9TYd3ht1vXQMb3v64FY3iAkpowr7hJJ", "txid": "51b347cf443a1f2eafd0e24399011f5953868e641882991e8836bbed09fcc831" },
-                    { "index": 6, "owner": "1GQX8HfxPRREEbCjy3Vbp57CyfhHdo3Yes", "txid": "6954c04eccbdca6b43ddd94dce099a42e04eb1437bbb2940c7d6d18807f4af5a" },
-                    { "index": 7, "owner": "13gqJQv6srBua5MAKwVK6jLRKqnQivQpju", "txid": "4d99001bf2a690925c1fe8c2bada2ff5847a8eec59617ade2c3626e6279754e7" },
-                    { "index": 8, "owner": "16p13WZgWGqENoFvoaQ1kexT2ZEXBYfw3b", "txid": "7a2f137c1dd992a40fc66d27ef52f88c2792e4c5b4de0602cccb9cffe66d8f2e" },
-                    { "index": 9, "owner": "1HPU58vxvwr9gg2Fh6obvw7cedPVUpQacY", "txid": "14d7e2f401e30fd539e20b7c5511761a1d48e8c0d1bc1597bf5ee54c8283dae4" },
-                    { "index": 10, "owner": "1GfrZQHrv2o9CrPLW3t45j7ePGG1hvxB4r", "txid": "dd83d593013d931791c70492c2ef87115fdc73c6e2bf353744e8341676cda8f4" },
-                    { "index": 11, "owner": "13Q7EjhxxU79xwHCZSjx5BcRJPtwBHM1wi", "txid": "a8ede2cc68e81ed8e94a4546fafd32115e25eb23e7b41762fe543e29dcae0c35" },
-                    { "index": 12, "owner": "121CH8s6r7xbS6SmPfbYY1M6k6HLxTP5D3", "txid": "a15c037de72a403d96cb8069be2765a5a54eadad157abbefc40491e3cf08e0c8" },
-                    { "index": 13, "owner": "19MB7X2DdWhuf8mYvi1QXPocdkivi726qX", "txid": "26b2e6dc26423132127ec14e7d0558e422d9896c8b06a6fb6d4d623401c749f1" },
-                    { "index": 14, "owner": "1GqKQvHq7Yd127ZHZoQqod2hZsF8iDFneW", "txid": "c42cde33048ddb7c0b9a9b7cda53f5c967b66dba8cb5a48dec022412da8596a6" },
-                    { "index": 15, "owner": "1C1U2X9U74CVd1WQrFQianAbFrPtcTdCyE", "txid": "80d93781c543f1965c40b95529ff0c2a9bec06767a8cbf662db7e73f70b2c62a" },
-                    { "index": 16, "owner": "1CTrUetoWrEGXLSzCcL3CXwU7gF7g2PWE4", "txid": "4a3f7f3d2df980757861e9e8e441ffc122b2712514504b4219d2a5ae2d1931c7" },
-                    { "index": 17, "owner": "17VYrhG27V2tMB3Jv9rmMHoDaV32BNmtre", "txid": "aa29b7ef34da69c7fbbe39f83d16a725201e37313ac94081f0571aa61163ae9a" },
-                    { "index": 18, "owner": "1J5m332nTUE1L1qHh6SLJyAzyRorcDAJsi", "txid": "0053a5d5c76f6c579930685c192a36ce06c3fb1778a1890fed80ef48e2ed5288" },
-                    { "index": 19, "owner": "13LrNQNfYo14i6w4wHJpq97VjEcm12Uuix", "txid": "253300b2966a64b15101137c811870b46788a69be4fb2dcaa0c9f03e2ebf1f41" },
-                    { "index": 20, "owner": "1PJ2UJkiWrP3KtEQi8TrGtaZquipDAGF4Q", "txid": "5d629ce322a7c485f26c3fee98d3b5b6779ebf75494e5a12ecc3b50d7de4d3ca" },
-                    { "index": 21, "owner": "1CRUGtrHJ1jugxy5kG6V1Bv7YgowXHSRru", "txid": "adf80588966ff30ca1890f6c79adadb85a5355cf2ba0c1d910a2a2f0ddae7b5f" },
-                    { "index": 22, "owner": "1KjNE68uihpR2efpL2MiezaCykcctQGjr6", "txid": "4b545b7f137ad3410c14c9d56cb5bb975c5a6bffa57c6246367bd6a0271eebaf" },
-                    { "index": 23, "owner": "1DXEArxYN2UwPAmFjSMg6bjPpafXzS4nt2", "txid": "bb294e4845f6301c0c67db0a134d1500663154ca976f889295a048948df31dc0" },
-                    { "index": 24, "owner": "1M1DDEbvcJCnmvLUVqSENWX7qTsVCAxrpc", "txid": "79718875261bba8419b2dc8aad65e58e901efebbd54f368c8f3797036afeb522" }
-                ];
-
-                plots = meta.map(m => ({
-                    index: m.index,
-                    owner: m.owner,
-                    genesisId: m.txid,
-                    headId: m.txid,
-                    instance: null,
-                    originalPixels: new Uint8Array(28 * 28).fill(0),
-                    modifiedIndices: new Set(),
-                    queuedRent: null
-                }));
-
                 const { bsv, PixelPlot28 } = ScryptBundle;
 
                 // 1. Resolve heads from owners' history (Bulk)
@@ -746,13 +748,10 @@
                     }
                 }
 
-                // 2. Identify latest contract state for each plot
-                // We'll still use fetchLatestTxidsBulk because it's the fastest way to follow the spend chain,
-                // but we can cross-reference with history if needed.
-
-                // Fallback to following chain if direct scan is complex
-                addLog("Following contract chains (Fast Spent Check)...");
-                const currentHeads = await fetchLatestTxidsBulk(plots.map(p => p.headId));
+                // 2. Resolve heads (Fast Spent Check)
+                addLog("Following contract chains...");
+                const headIds = plots.map(p => p.headId);
+                const currentHeads = await fetchLatestTxidsBulk(headIds);
                 plots.forEach((p, i) => p.headId = currentHeads[i]);
 
                 // 3. Fetch all transaction data in bulk
@@ -764,7 +763,7 @@
                     if (hex) {
                         const tx = new bsv.Transaction(hex);
                         plot.instance = PixelPlot28.fromTx(tx, 0);
-                        decodePlotState(plot);
+                        decodePlotState(plot, false); // false = Don't reset user edits
                     }
                 }
 
@@ -932,13 +931,13 @@
                 const tx = await provider.getTransaction(headId);
                 plot.instance = PixelPlot28.fromTx(tx, 0);
 
-                decodePlotState(plot);
+                decodePlotState(plot, true);
             } catch (e) {
                 addLog(`Plot ${plot.index} sync failed: ${e.message}`, "error");
             }
         }
 
-        function decodePlotState(plot) {
+        function decodePlotState(plot, resetEdits = true) {
             const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
             let n = 0n;
             for (let i = 0; i < rawHex.length; i += 2) {
@@ -946,25 +945,21 @@
                 n |= (byte << (BigInt(i / 2) * 8n));
             }
 
-            const plotRow = Math.floor(plot.index / 5);
-            const plotCol = plot.index % 5;
-
             for (let i = 0; i < 784; i++) {
                 const color = Number((n >> (BigInt(i) * 5n)) & 31n);
                 plot.originalPixels[i] = color;
 
-                // Map to global grid
-                const localY = Math.floor(i / 28);
-                const localX = i % 28;
-                const globalY = plotRow * 28 + localY;
-                const globalX = plotCol * 28 + localX;
-                const globalIdx = globalY * 140 + globalX;
-
-                currentPixels[globalIdx] = color;
-                const el = document.getElementById(`p${globalIdx}`);
-                if (el) el.style.backgroundColor = COLORS[color];
+                // Sync global grid ONLY if not modified by user or if forced reset
+                const globalIdx = getGlobalIdxFromLocal(plot, i)
+                if (resetEdits || !plot.modifiedIndices.has(i)) {
+                    currentPixels[globalIdx] = color;
+                    const el = document.getElementById(`p${globalIdx}`);
+                    if (el) el.style.backgroundColor = COLORS[color];
+                }
             }
-            plot.modifiedIndices.clear();
+            if (resetEdits) {
+                plot.modifiedIndices.clear();
+            }
             updateQueueUI();
         }
 

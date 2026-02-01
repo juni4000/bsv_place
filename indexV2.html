@@ -1419,7 +1419,12 @@
             const txResult = await plot.instance.methods.updatePixels(updates, BigInt(numUpdates), {
                 changeAddress: priv.toAddress(),
                 feePerKb: feeRate,
-                lockTime: 0
+                lockTime: 0,
+                next: {
+                    instance: plot.instance.next(), // Dummy next to satisfy type, will be overwritten by nextInstance in simulation
+                    balance: plot.instance.utxo.satoshis,
+                    atOutputIndex: 0
+                }
             });
 
             plot.instance = txResult.next ? txResult.next.instance : plot.instance;

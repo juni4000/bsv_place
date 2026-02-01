@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>sCrypt Wallet Scanner</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --text: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .input-group {
+            background: var(--card);
+            padding: 20px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .row {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            align-items: center;
+        }
+
+        .artifact-status {
+            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: 4px;
+            background: #334155;
+            color: #94a3b8;
+        }
+
+        .artifact-status.loaded {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn-secondary {
+            background: #475569;
+        }
+
+        input {
+            flex: 1;
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+        }
+
+        button {
+            background: var(--accent);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            filter: brightness(1.2);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        #log {
+            background: #000;
+            color: #ccc;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 30px;
+            border: 1px solid #334155;
+        }
+
+        #log div.success {
+            color: var(--success);
+        }
+
+        #log div.warning {
+            color: var(--warning);
+        }
+
+        #log div.error {
+            color: var(--error);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .contract-card {
+            background: var(--card);
+            padding: 25px;
+            border-radius: 16px;
+            border-left: 5px solid #334155;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .contract-card.live {
+            border-left-color: var(--success);
+        }
+
+        .contract-card:hover {
+            transform: scale(1.005);
+        }
+
+        .badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge.live {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge.spent {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+
+        .field {
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: baseline;
+        }
+
+        .label {
+            color: #94a3b8;
+            font-weight: 500;
+            margin-right: 8px;
+            min-width: 80px;
+        }
+
+        .value {
+            color: #f8fafc;
+            word-break: break-all;
+            font-family: monospace;
+        }
+
+        .tx-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-family: monospace;
+        }
+
+        .tx-link:hover {
+            text-decoration: underline;
+        }
+
+        .state-details {
+            margin-top: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .state-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .state-item .k {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+
+        .state-item .v {
+            font-size: 14px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .method-tag {
+            display: inline-block;
+            background: #334155;
+            color: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 10px;
+            font-family: sans-serif;
+        }
+
+        /* Grid Styles */
+        .pixel-grid {
+            display: grid;
+            grid-template-columns: repeat(45, 5px);
+            gap: 0px;
+            width: fit-content;
+            background: #000;
+            border: 1px solid #555;
+            margin-top: 10px;
+        }
+
+        .pixel {
+            width: 5px;
+            height: 5px;
+        }
+
+        .pixel.c0 {
+            background: #fff;
+        }
+
+        .pixel.c1 {
+            background: #0f0;
+        }
+
+        .pixel.c2 {
+            background: #ff0;
+        }
+
+        .pixel.c3 {
+            background: #f00;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PixelPlot45 Scanner</h1>
+            <p>Visualizing PixelPlot45 Contract Limitless Grid</p>
+        </div>
+
+        <div class="input-group">
+            <div class="row">
+                <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">📁 Load Artifact
+                    (.json / .js)</button>
+                <input type="file" id="fileInput" accept=".json,.js" onchange="handleFileSelect(event)">
+                <span id="artifactLabel" class="artifact-status">Artifact not loaded</span>
+                <div style="flex: 1"></div>
+            </div>
+            <div class="row">
+                <input type="text" id="address" placeholder="Enter BSV Address..."
+                    value="1FAKiEhReUbVha5Fac94ao47u2kq4mmpnA">
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <input type="range" id="depth" min="20" max="600" step="20" value="300"
+                        oninput="document.getElementById('depthDisplay').innerText = this.value">
+                    <span id="depthDisplay" style="min-width:30px; text-align:right; font-family:monospace">300</span>
+                </div>
+                <button id="btnScan" onclick="startScan()">Start scan</button>
+                <button id="btnDebug" class="btn-secondary" onclick="debugScan()"
+                    style="background:#f59e0b; margin-left: 10px;">Debug Check (30)</button>
+            </div>
+        </div>
+
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-card">
+                <div>UTXOs Checked</div>
+                <div class="stat-value" id="stat-utxos">0</div>
+            </div>
+            <div class="stat-card">
+                <div>History Searched</div>
+                <div class="stat-value" id="stat-history">0</div>
+            </div>
+            <div class="stat-card">
+                <div>Contracts Found</div>
+                <div class="stat-value" id="stat-found">0</div>
+            </div>
+            <div class="stat-card">
+                <div>Live Heads</div>
+                <div class="stat-value" id="stat-live" style="color: var(--success)">0</div>
+            </div>
+        </div>
+
+        <div id="log">Waiting for input...</div>
+
+        <div class="results-grid" id="results"></div>
+    </div>
+
+    <!-- Include artifact.js if available locally -->
+    <script src="artifact.js"></script>
+    <!-- Include the Scrypt bundle -->
+    <script src="./deploy/scrypt_bundle.js"></script>
+
+    <script>
+        const logBox = document.getElementById('log');
+        const resultsBox = document.getElementById('results');
+
+        function log(msg, cls = '') {
+            const div = document.createElement('div');
+            div.textContent = `> ${msg}`;
+            if (cls) div.className = cls;
+            logBox.appendChild(div);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        async function fetchBulkHex(txids) {
+            if (txids.length === 0) return [];
+
+            const url = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ txids })
+            });
+            return await resp.json();
+        }
+
+        let loadedArtifact = null;
+
+        // Auto-load artifact if global exists
+        window.addEventListener('load', () => {
+            if (window.GAME_CONTRACT_ARTIFACT) {
+                loadedArtifact = window.GAME_CONTRACT_ARTIFACT;
+                document.getElementById('artifactLabel').innerText = "Artifact: artifact.js (Global)";
+                document.getElementById('artifactLabel').classList.add('loaded');
+                log("Artifact loaded from artifact.js (global variable).", "success");
+            }
+        });
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    let content = e.target.result;
+                    if (file.name.endsWith('.js')) {
+                        // Try to extract JSON object from JS "const X = { ... }"
+                        // Simple heuristic: find first '{' and last '}'
+                        const start = content.indexOf('{');
+                        const end = content.lastIndexOf('}');
+                        if (start !== -1 && end !== -1) {
+                            content = content.substring(start, end + 1);
+                        } else {
+                            throw new Error("Could not find JSON object in JS file");
+                        }
+                    }
+                    loadedArtifact = JSON.parse(content);
+                    document.getElementById('artifactLabel').innerText = "Artifact: " + file.name;
+                    document.getElementById('artifactLabel').classList.add('loaded');
+                    log(`Artifact ${file.name} loaded successfully.`, "success");
+                } catch (err) {
+                    log(`Error loading artifact: ${err.message}`, "error");
+                    alert("Invalid file: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        const reverseHex = (hex) => {
+            if (!hex) return "";
+            return hex.match(/../g).reverse().join('');
+        };
+
+        // Try to identify method called
+        function identifyMethod(tx, abi) {
+            // Usually scrypt-ts public calls have the method index as the last argument in the input script
+            // Or the function selector.
+            // For now, let's just log the chunks count or try to map index
+            // Assuming inputs[0] is the contract spend.
+            if (!tx.inputs || tx.inputs.length === 0) return "Unknown";
+
+            // This is a rough heuristic for display purposes
+            // We would need the full ASM to be sure, or better scrypt tools
+            // But we can just return "Contract Call" for now if we can't be sure
+            return "Contract Interaction";
+        }
+
+        function decodeState(instance) {
+            try {
+                // If the instance has a state property, use that (scrypt-ts usually hydrates properties)
+                // However, we might need to manually unpack if it hasn't run 'fromTx' fully or if we want raw access
+                // Let's assume instance has the properties defined in the Struct
+
+                // If instance.unpackState exists, use it
+                if (instance.unpackState && instance.packedGameState) {
+                    return instance.unpackState(instance.packedGameState);
+                }
+
+                // Fallback: iterate ABI stateProps
+                const parsed = {};
+                // If we can't rely on properties being auto-set
+                // We rely on visual inspection of properties
+                if (instance.pixels !== undefined) parsed.pixels = instance.pixels;
+                if (instance.lockedUntil !== undefined) parsed.lockedUntil = instance.lockedUntil;
+                if (instance.pricePerBlock !== undefined) parsed.pricePerBlock = instance.pricePerBlock;
+
+                // If we got nothing, return null
+                if (Object.keys(parsed).length === 0) return null;
+                return parsed;
+            } catch (e) {
+                console.warn("State decode failed", e);
+                return null;
+            }
+        }
+
+        function renderGrid(hex) {
+            if (!hex) return '<div>No Data</div>';
+            let html = '<div class="pixel-grid">';
+
+            let byteIdx = 0;
+            let bitOffset = 0;
+            const bytes = [];
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes.push(parseInt(hex.substr(i, 2), 16));
+            }
+
+            // 45x45 = 2025
+            for (let i = 0; i < 2025; i++) {
+                let val = 0;
+                if (byteIdx < bytes.length) {
+                    const shift = 6 - bitOffset;
+                    val = (bytes[byteIdx] >> shift) & 0x03;
+                }
+
+                html += `<div class="pixel c${val}" title="P${i}"></div>`;
+
+                bitOffset += 2;
+                if (bitOffset >= 8) {
+                    bitOffset = 0;
+                    byteIdx++;
+                }
+            }
+            html += '</div>';
+            return html;
+        }
+
+        async function startScan() {
+            const addr = document.getElementById('address').value.trim();
+            const depth = parseInt(document.getElementById('depth').value) || 200;
+            const btn = document.getElementById('btnScan');
+
+            if (!addr) return alert("Enter address");
+
+            if (!loadedArtifact) {
+                try {
+                    const r = await fetch('Tamagochi_v1.json');
+                    loadedArtifact = await r.json();
+                    log("Auto-loaded Tamagochi_v1.json", "success");
+                } catch (e) {
+                    return alert("Please load an artifact file first!");
+                }
+            }
+
+            btn.disabled = true;
+            resultsBox.innerHTML = '';
+            document.getElementById('stats').style.display = 'grid';
+
+            // Reset stats
+            document.getElementById('stat-utxos').innerText = '0';
+            document.getElementById('stat-history').innerText = '0';
+            document.getElementById('stat-found').innerText = '0';
+            document.getElementById('stat-live').innerText = '0';
+
+            try {
+                const bundle = window.ScryptBundle || {};
+                const PixelPlot45 = window.PixelPlot45 || bundle.PixelPlot45;
+                const scrypt = window.scrypt || bundle.scrypt;
+
+                if (!PixelPlot45) throw new Error("PixelPlot45 class not found in bundle. Check build.");
+
+                PixelPlot45.loadArtifact(loadedArtifact);
+                log("Contract class initialized.", "success");
+
+                // 3. Fetch Full History (Using POST Batch Endpoint)
+                log(`Fetching FULL history...`);
+                let history = [];
+                // Map txid to height for sorting/status
+                const txHeights = {};
+                try {
+                    // Use standard GET endpoint for reliability (debugScan found txs with this)
+                    const histResp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/history`);
+                    history = await histResp.json();
+                } catch (e) {
+                    log("History fetch failed: " + e.message, "error");
+                }
+
+                // 3b. Fetch Unconfirmed History
+                try {
+                    const memResp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/unconfirmed/history`);
+                    const memData = await memResp.json();
+
+                    // The API returns structure: { result: [...] } for unconfirmed but we should be safe
+                    let mempool = [];
+                    if (Array.isArray(memData)) {
+                        mempool = memData;
+                    } else if (memData && Array.isArray(memData.result)) {
+                        mempool = memData.result;
+                    }
+
+                    log(`Fetched ${mempool.length} unconfirmed transactions.`);
+
+                    if (mempool.length > 0) {
+                        mempool.forEach(tx => {
+                            history.push({ tx_hash: tx.tx_hash, height: 0 }); // 0 indicates unconfirmed
+                        });
+                    }
+                } catch (e) { console.warn("Mempool fetch failed", e); }
+
+                // Sort descending by height (Newest First)
+                history.sort((a, b) => (b.height || Infinity) - (a.height || Infinity));
+
+                // Apply Depth Limit
+                const recent = history.slice(0, depth);
+                document.getElementById('stat-history').innerText = recent.length + " (Scanned)";
+
+                recent.forEach(h => { txHeights[h.tx_hash] = h.height; });
+
+                // Merge IDs (from history + mempool)
+                const allTxIds = [...new Set([
+                    ...recent.map(h => h.tx_hash)
+                ])];
+
+                log(`Analyzing ${allTxIds.length} unique transactions...`);
+
+                let foundInstances = []; // To store { txid, outIdx, instance, genesisId, ... }
+                let foundCount = 0;
+
+                // Process in batches
+                for (let i = 0; i < allTxIds.length; i += 20) {
+                    const batch = allTxIds.slice(i, i + 20);
+                    log(`Batch ${i / 20 + 1}: Fetching hex for ${batch.length} txs...`);
+                    const hexResults = await fetchBulkHex(batch);
+                    log(`Batch ${i / 20 + 1}: Received ${hexResults.length} hex results.`);
+
+                    for (const res of hexResults) {
+                        if (!res || !res.hex) continue;
+                        const bsvTx = new scrypt.bsv.Transaction(res.hex);
+
+                        for (let outIdx = 0; outIdx < bsvTx.outputs.length; outIdx++) {
+                            try {
+                                const instance = PixelPlot45.fromTx(bsvTx, outIdx);
+                                if (!instance) continue;
+
+                                let genesisIdLE = instance.genesisTxId;
+                                let genesisId = "Unknown";
+                                let isDeployment = false;
+
+                                if (genesisIdLE && genesisIdLE !== "" && genesisIdLE !== "00") {
+                                    genesisId = reverseHex(genesisIdLE);
+                                } else {
+                                    genesisId = res.txid; // Use TXID as Genesis for deployment
+                                    isDeployment = true;
+                                }
+
+                                const height = txHeights[res.txid] || 0;
+                                const isUnconfirmed = height <= 0;
+
+                                // Decode state
+                                let decoded = decodeState(instance);
+
+                                foundInstances.push({
+                                    txid: res.txid,
+                                    outIdx,
+                                    genesisId,
+                                    instance,
+                                    height,
+                                    isUnconfirmed,
+                                    decoded,
+                                    isDeployment
+                                });
+                                foundCount++;
+                            } catch (e) {
+                                // Not a contract - this is expected generally, but let's log weird errors
+                                // log(`Tx ${res.txid} out ${outIdx}: ${e.message}`);
+                            }
+                        }
+                    }
+
+                    document.getElementById('stat-found').innerText = foundCount;
+                }
+
+                if (foundCount === 0) {
+                    log("No contracts found.", "warning");
+                    resultsBox.innerHTML = '<div style="padding:20px; text-align:center; color:#ccc">No contracts found in scanned range.</div>';
+                    return;
+                }
+
+                // ---------------------------------------------
+                // BULK SPENT CHECK
+                // ---------------------------------------------
+                log(`Found ${foundCount} potential contracts.`);
+                log(`Checking spent status for ${foundInstances.length} instances via Bulk API...`);
+
+                // We process spent checks in batches of 20
+                for (let i = 0; i < foundInstances.length; i += 20) {
+                    const chunk = foundInstances.slice(i, i + 20);
+                    const payload = chunk.map(inst => ({
+                        txid: inst.txid,
+                        vout: inst.outIdx
+                    }));
+
+                    try {
+                        const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ utxos: payload })
+                        });
+                        const data = await resp.json();
+
+                        // Map results back to instances
+                        // API returns array in same order? Usually yes.
+                        // Or items with txid/vout.
+                        if (Array.isArray(data)) {
+                            data.forEach(item => {
+                                // Find matching instance in our chunk
+                                // item.utxo.txid, item.utxo.vout
+                                const match = chunk.find(c => c.txid === item.utxo.txid && c.outIdx === item.utxo.vout);
+                                if (match) {
+                                    log(`> Checked ${match.txid.substring(0, 8)}:${match.outIdx} -> ${item.spentIn ? 'SPENT' : 'UNSPENT'}`);
+
+                                    // If 'spentIn' exists, it is spent.
+                                    // If not, it is unspent (Live).
+                                    if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
+                                        match.spentInfo = item.spentIn;
+                                        match.isSpent = true;
+                                    } else {
+                                        match.isSpent = false;
+                                    }
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.error("Bulk spent check error", e);
+                        log(`Bulk spent check error on batch ${i}: ${e.message}`, 'error');
+                    }
+                }
+
+                log(`Bulk check complete. Processing results...`);
+
+                // ---------------------------------------------
+                // Grouping & Rendering
+                // ---------------------------------------------
+                let contractsByGenesis = {};
+                foundInstances.forEach(inst => {
+                    if (!contractsByGenesis[inst.genesisId]) {
+                        contractsByGenesis[inst.genesisId] = [];
+                    }
+                    contractsByGenesis[inst.genesisId].push(inst);
+                });
+
+                const genesisKeys = Object.keys(contractsByGenesis);
+                log(`Found ${genesisKeys.length} unique game chains.`);
+
+                let liveCount = 0;
+
+                genesisKeys.forEach(genId => {
+                    const chain = contractsByGenesis[genId];
+
+                    // Pre-calculate dependency depth for same-block sorting
+                    // 1. Map TxID -> Instance
+                    const txMap = {};
+                    chain.forEach(c => { c.chainDepth = 0; txMap[c.txid] = c; });
+
+                    // 2. Propagate depth (Iterative approach since chains are short)
+                    // If A is spent by B, and B is in our list, then B.depth = max(B.depth, A.depth + 1)
+                    // We run this loop a few times to propagate
+                    for (let pass = 0; pass < chain.length + 1; pass++) {
+                        let changed = false;
+                        chain.forEach(a => {
+                            if (a.isSpent && a.spentInfo && a.spentInfo.txid) {
+                                const b = txMap[a.spentInfo.txid];
+                                if (b) {
+                                    if (b.chainDepth <= a.chainDepth) {
+                                        b.chainDepth = a.chainDepth + 1;
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        });
+                        if (!changed) break;
+                    }
+
+                    // Ensure sorted Newest -> Oldest
+                    chain.sort((a, b) => {
+                        const hA = a.height === 0 ? Infinity : a.height;
+                        const hB = b.height === 0 ? Infinity : b.height;
+
+                        // If heights differ, sort by height descending
+                        if (hA !== hB) return hB - hA;
+
+                        // If heights equal, use calculated Topological Depth
+                        return b.chainDepth - a.chainDepth;
+                    });
+
+                    // IDENTIFY HEAD
+                    // The first item in the sorted list is the most recent we've seen.
+                    const head = chain[0];
+
+                    // "if not found its last instance we been working with"
+                    // If it is UNSPENT (!isSpent), it means it's the valid Head.
+                    // If it is SPENT, then we might have missed the child, or it's dead.
+
+                    const isHeadUnspent = head && !head.isSpent;
+                    if (isHeadUnspent) liveCount++;
+
+                    // Render Group
+                    const groupDiv = document.createElement('div');
+                    groupDiv.style.marginBottom = '30px';
+                    groupDiv.style.border = '1px solid #334155';
+                    groupDiv.style.borderRadius = '16px';
+                    groupDiv.style.padding = '20px';
+                    groupDiv.style.background = '#1e293b';
+
+                    const titleColor = isHeadUnspent ? '#10b981' : '#3b82f6';
+                    const statusText = isHeadUnspent ? '(Active)' : '(Historic/Moved)';
+
+                    // Show full Genesis ID
+                    groupDiv.innerHTML = `<h3 style="margin-top:0; color:${titleColor}; overflow-wrap:anywhere;">
+                        Game: <span style="color:white; font-family:monospace; font-size:0.8em">${genId}</span> 
+                        <span style="font-size:0.7em; color:#94a3b8">${statusText}</span>
+                    </h3>`;
+
+                    const list = document.createElement('div');
+                    list.className = 'results-grid';
+
+                    chain.forEach((c, idx) => {
+                        const isHead = (idx === 0);
+                        const card = document.createElement('div');
+
+                        // Border logic
+                        let borderColor = '#334155';
+                        if (isHead) {
+                            borderColor = !c.isSpent ? '#10b981' : '#f59e0b';
+                        }
+
+                        card.className = `contract-card`;
+                        card.style.borderLeftColor = borderColor;
+
+                        // Badge
+                        let badgeHtml = '';
+                        if (isHead) {
+                            if (!c.isSpent) {
+                                badgeHtml = `<span class="badge live">LIVE HEAD</span>`;
+                            } else {
+                                // Spent
+                                const spender = c.spentInfo ? c.spentInfo.txid : '?';
+                                badgeHtml = `<span class="badge spent">SPENT BY ${spender.substring(0, 4)}...</span>`;
+                            }
+                        } else {
+                            badgeHtml = `<span class="badge" style="background:#334155; color:#94a3b8">HISTORY</span>`;
+                        }
+
+                        if (c.isUnconfirmed) {
+                            badgeHtml += ` <span class="badge" style="background:rgba(245, 158, 11, 0.2); color:#f59e0b">Mempool</span>`;
+                        }
+
+                        // State Render
+                        let detailsHtml = '';
+                        if (c.decoded) {
+                            let itemsHtml = '';
+                            const keys = ['money', 'happiness', 'hoursLeft', 'foodSupply', 'education', 'career'];
+                            const fmt = (v) => typeof v === 'bigint' ? v.toString() : v;
+                            keys.forEach(k => {
+                                if (c.decoded[k] !== undefined) {
+                                    itemsHtml += `<div class="state-item"><span class="k">${k}</span><span class="v">${fmt(c.decoded[k])}</span></div>`;
+                                }
+                            });
+                            if (c.decoded.currentLocation) {
+                                itemsHtml += `<div class="state-item"><span class="k">Location</span><span class="v">${c.decoded.currentLocation}</span></div>`;
+                            }
+                            detailsHtml = `<div class="state-details">${itemsHtml}</div>`;
+                        }
+
+                        // Spent Field
+                        let spentField = '';
+                        if (c.isSpent && c.spentInfo) {
+                            spentField = `<div class="field"><span class="label" style="color:#ef4444">Spent By:</span><span class="value"><a class="tx-link" href="https://whatsonchain.com/tx/${c.spentInfo.txid}" target="_blank" style="color:#ef4444">${c.spentInfo.txid}</a></span></div>`;
+                        }
+
+                        card.innerHTML = `
+                            ${badgeHtml}
+                            <div class="field"><span class="label">TxID:</span><span class="value">
+                                <a class="tx-link" href="https://whatsonchain.com/tx/${c.txid}" target="_blank">${c.txid}</a>
+                            </span> <span class="method-tag">Contract</span></div>
+                            <div class="field"><span class="label">Index:</span><span class="value">${c.outIdx}</span> <span class="label" style="margin-left:10px">Height:</span><span class="value">${c.height > 0 ? c.height : 'Mempool'}</span></div>
+                            ${spentField}
+                            ${detailsHtml}
+                        `;
+                        list.appendChild(card);
+                    });
+
+                    groupDiv.appendChild(list);
+                    resultsBox.appendChild(groupDiv);
+                });
+
+                document.getElementById('stat-live').innerText = liveCount;
+
+            } catch (e) {
+                log(`Error: ${e.message}`, "error");
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Start scan";
+            }
+        }
+
+        async function debugScan() {
+            const addr = document.getElementById('address').value.trim();
+            const btn = document.getElementById('btnDebug');
+            const targetTx = "924a0e574ee0be3d640f0d5bc049042640b54202c93b0a9753c23656e0ed008b";
+
+            if (!addr) return alert("Enter address");
+
+            if (!loadedArtifact) {
+                try {
+                    const r = await fetch('Tamagochi_v1.json');
+                    loadedArtifact = await r.json();
+                    log("Auto-loaded Tamagochi_v1.json", "success");
+                } catch (e) {
+                    return alert("Please load an artifact file or Tamagochi_v1.json first!");
+                }
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Scanning Full History...";
+            resultsBox.innerHTML = '';
+
+            // Clear stats
+            document.getElementById('stat-utxos').innerText = '-';
+            document.getElementById('stat-history').innerText = '-';
+            document.getElementById('stat-found').innerText = '-';
+            document.getElementById('stat-live').innerText = '-';
+
+            log("--- FULL HISTORY SCAN STARTED ---", "warning");
+
+            try {
+                const bundle = window.ScryptBundle || {};
+                const GameContract = window.GameContract || bundle.GameContract;
+                const scrypt = window.scrypt || bundle.scrypt;
+
+                if (!GameContract) throw new Error("GameContract class not found.");
+                GameContract.loadArtifact(loadedArtifact);
+
+                // 1. Fetch UTXOs (to determine spent status)
+                log("Fetching current UTXOs...");
+                const utxoResp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/unspent`);
+                const utxos = await utxoResp.json();
+                const unspentSet = new Set(utxos.map(u => `${u.tx_hash}:${u.tx_pos}`));
+                log(`Current UTXOs: ${utxos.length}`);
+
+                // 2. Fetch Full History
+                log("Fetching ALL history...");
+                const histResp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/history`);
+                const history = await histResp.json();
+                // Sort descending (newest first)
+                history.sort((a, b) => (b.height || Infinity) - (a.height || Infinity));
+
+                log(`Fetched ${history.length} transactions in history.`);
+
+                // 2b. Fetch Unconfirmed History (Mempool)
+                log("Fetching Unconfirmed history (Mempool)...");
+                try {
+                    const mempoolResp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/unconfirmed/history`);
+                    const mempool = await mempoolResp.json();
+                    log(`Fetched ${mempool.length} unconfirmed transactions.`);
+
+                    // Merge and deduplicate
+                    const historyTxIds = new Set(history.map(h => h.tx_hash));
+                    mempool.forEach(tx => {
+                        if (!historyTxIds.has(tx.tx_hash)) {
+                            // Normalize structure
+                            history.unshift({
+                                tx_hash: tx.tx_hash,
+                                height: 0 // Mark as unconfirmed
+                            });
+                        }
+                    });
+                } catch (e) {
+                    log("Failed to fetch unconfirmed history: " + e.message, "warning");
+                }
+
+                // 3. Process All Txs (Chunks of 20)
+                const allTxIds = history.map(h => h.tx_hash);
+
+                // If target TX is missing from history (e.g. mempool lag), add it manual
+                if (!allTxIds.includes(targetTx)) {
+                    allTxIds.unshift(targetTx);
+                    log("Target TX added manually to scan list.");
+                }
+
+                // Create Table Structure
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+                table.style.marginTop = '20px';
+                table.innerHTML = `
+                    <thead>
+                        <tr style="background:#334155; text-align:left;">
+                            <th style="padding:10px;">Link</th>
+                            <th style="padding:10px;">Out 0 Spent?</th>
+                            <th style="padding:10px;">Script Match?</th>
+                            <th style="padding:10px;">Genesis ID</th>
+                            <th style="padding:10px;">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scanTableBody"></tbody>
+                 `;
+                resultsBox.appendChild(table);
+                const tbody = document.getElementById('scanTableBody');
+
+                for (let i = 0; i < allTxIds.length; i += 20) {
+                    const chunk = allTxIds.slice(i, i + 20);
+
+                    // Fetch Tx Data
+                    const hexResults = await fetchBulkHex(chunk);
+
+                    // Bulk Spent Check for this debug chunk
+                    const utxosToCheck = chunk.map(txid => ({ txid, vout: 0 }));
+                    const spentMap = {}; // txid -> bool
+                    try {
+                        const sResp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ utxos: utxosToCheck })
+                        });
+                        const sData = await sResp.json();
+                        if (Array.isArray(sData)) {
+                            sData.forEach(item => {
+                                // If spentIn is present, it is spent.
+                                if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
+                                    spentMap[item.utxo.txid] = true;
+                                } else {
+                                    spentMap[item.utxo.txid] = false;
+                                }
+                            });
+                        }
+                    } catch (e) { console.error("Debug spent check fail", e); }
+
+
+                    for (const res of hexResults) {
+                        if (!res || !res.hex) continue;
+
+                        const bsvTx = new scrypt.bsv.Transaction(res.hex);
+                        const txid = res.txid;
+
+                        // Check Output 0
+                        const outIdx = 0;
+
+                        // Use the bulk check result
+                        const isSpent = spentMap[txid] === true;
+
+                        let scriptMatch = false;
+                        let genesisId = "-";
+                        let details = "";
+                        let rowColor = "transparent";
+
+                        try {
+                            const instance = GameContract.fromTx(bsvTx, outIdx);
+                            scriptMatch = true;
+                            const g = instance.genesisTxId;
+                            genesisId = g ? reverseHex(g) : "None";
+                            details = "Valid Contract";
+
+                            // Calculate Script Hash for WoC link
+                            // Electrum/WoC use SHA256 of ScriptPubKey, Little Endian (Reversed)
+                            const scriptHex = instance.lockingScript.toHex();
+                            const scriptBuf = scrypt.bsv.deps.Buffer.from(scriptHex, 'hex');
+                            const scriptHashLE = scrypt.bsv.crypto.Hash.sha256(scriptBuf).reverse().toString('hex');
+
+                            // Try decode
+                            try {
+                                if (instance.unpackState) {
+                                    const st = instance.unpackState(instance.packedGameState);
+                                    details = `Money: ${st.money}, Hap: ${st.happiness}`;
+                                }
+                            } catch (e) { }
+
+                            details += ` <br><a href="https://api.whatsonchain.com/v1/bsv/main/script/${scriptHashLE}/history" target="_blank" style="font-size:0.8em; color:#60a5fa">[Script Hash]</a>`;
+
+                        } catch (e) {
+                            scriptMatch = false;
+                            details = e.message;
+                            // If it's the target tx, highlight the error
+                            if (txid === targetTx) {
+                                rowColor = "rgba(239, 68, 68, 0.1)";
+                                details = `<span style="color:#ef4444">${e.message}</span>`;
+                            }
+                        }
+
+                        const tr = document.createElement('tr');
+                        tr.style.background = rowColor;
+                        tr.style.borderBottom = "1px solid #333";
+
+                        // Style helpers
+                        const spentTag = isSpent
+                            ? `<span style="color:#f59e0b">YES (Spent)</span>`
+                            : `<span style="color:#10b981; font-weight:bold">NO (Unspent)</span>`;
+
+                        const matchTag = scriptMatch
+                            ? `<span style="color:#10b981">YES</span>`
+                            : `<span style="color:#64748b">NO</span>`;
+
+                        tr.innerHTML = `
+                            <td style="padding:8px; font-family:monospace;">
+                                <a href="https://whatsonchain.com/tx/${txid}" target="_blank" style="color:#3b82f6; text-decoration:none;">
+                                    ${txid.substring(0, 8)}...
+                                </a>
+                            </td>
+                            <td style="padding:8px;">${spentTag}</td>
+                            <td style="padding:8px;">${matchTag}</td>
+                            <td style="padding:8px; font-family:monospace;">${genesisId.substring(0, 10)}...</td>
+                            <td style="padding:8px; font-size:0.85em; color:#ccc;">${details}</td>
+                         `;
+                        tbody.appendChild(tr);
+                    }
+                    // Small delay to let UI render if list is huge
+                    if (i % 100 === 0) await new Promise(r => setTimeout(r, 10));
+                }
+
+                log(`Full history scan complete.`);
+            } catch (e) {
+                log(`ERROR: ${e.message}`, "error");
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Full History Scan";
+                log("--- SCAN END ---");
+            }
+        }
+
+    </script>
+</body>
+
+</html>

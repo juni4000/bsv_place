@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>PixelPlot V2.1 - Elite Pixel Real Estate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #020617;
+            --card-bg: #0f172a;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.3);
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --pixel-size: 5px;
+            --border-color: #1e293b;
+            --grid-size: 140;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 20px 40px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .wallet-status {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(2, 6, 23, 0.6);
+            padding: 8px 16px;
+            border-radius: 99px;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 30px;
+            padding: 30px 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* --- LEFT COLUMN: GRID --- */
+        .viewport {
+            background: var(--card-bg);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        #grid-container {
+            position: relative;
+            padding: 2px;
+            background: #1e293b;
+            border-radius: 4px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+            cursor: grab;
+            transform-origin: 0 0;
+            display: inline-block;
+        }
+
+        #grid-container:active {
+            cursor: grabbing;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(var(--grid-size), var(--pixel-size));
+            background: #334155;
+            user-select: none;
+            cursor: crosshair;
+            border: 1px solid #475569;
+            position: relative;
+        }
+
+        .pixel {
+            width: var(--pixel-size);
+            height: var(--pixel-size);
+            border: 0.1px solid rgba(255, 255, 255, 0.03);
+            transition: background 0.1s;
+        }
+
+        .pixel:hover {
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.5);
+            z-index: 10;
+        }
+
+        .pixel.modified {
+            box-shadow: inset 0 0 0 2px var(--accent);
+            z-index: 5;
+        }
+
+        /* Quadrant Overlays */
+        .quadrant-lines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .quadrant-lines::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .quadrant-lines::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .quadrant-label {
+            position: absolute;
+            font-size: 10px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            pointer-events: none;
+        }
+
+        /* --- RIGHT COLUMN: TOOLS --- */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+        }
+
+        .card h3 {
+            margin: 0 0 15px 0;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 6px;
+        }
+
+        .swatch {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .swatch:hover {
+            transform: scale(1.1);
+        }
+
+        .swatch.selected {
+            border-color: white;
+            box-shadow: 0 0 12px var(--accent-glow);
+            z-index: 2;
+        }
+
+        .quad-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .quad-btn {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quad-btn:hover {
+            border-color: var(--accent);
+            background: #262f3f;
+        }
+
+        .quad-btn.rented {
+            border-color: var(--warning);
+        }
+
+        .quad-btn .title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .quad-btn .meta {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            display: block;
+        }
+
+        .quad-btn .time {
+            color: var(--warning);
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+        }
+
+        /* --- BOTTOM SHELF: LOGS --- */
+        .bottom-shelf {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--accent);
+            height: 200px;
+            z-index: 1000;
+            display: grid;
+            grid-template-columns: 280px 1fr 340px;
+            box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.8);
+        }
+
+        .bottom-shelf.visible {
+            transform: translateY(0);
+        }
+
+        .queue-summary {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .queue-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .queue-item .label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .queue-item .val {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .queue-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-dim);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .tx-list {
+            margin-top: 10px;
+            max-height: 80px;
+            overflow-y: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.6;
+            }
+        }
+
+        .loading-text {
+            animation: pulse 1.5s infinite;
+        }
+
+        #rent-queue-info {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+            font-size: 0.85rem;
+            color: #c4b5fd;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            border-radius: 20px;
+            width: 400px;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 1);
+        }
+
+        .log-container {
+            padding: 10px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+            font-family: 'Fira Code', monospace;
+            background: #020617;
+        }
+
+        .log-msg {
+            padding: 4px 8px;
+            border-left: 2px solid var(--accent);
+            margin-bottom: 4px;
+            font-size: 11px;
+            animation: slideIn 0.3s ease-out;
+            color: var(--text-dim);
+        }
+
+        .log-msg.error {
+            border-left-color: var(--danger);
+        }
+
+        .log-msg.success {
+            border-left-color: var(--success);
+        }
+
+        .queue-panel {
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .plot-group {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #334155;
+        }
+
+        .plot-group h4 {
+            margin: 0 0 5px 0;
+            font-size: 11px;
+            color: var(--accent);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .controls-panel {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-left: 1px solid var(--border-color);
+        }
+
+        .mode-switch {
+            display: flex;
+            background: #1e293b;
+            padding: 4px;
+            border-radius: 8px;
+            gap: 4px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .mode-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .fee-slider-container {
+            margin-top: 10px;
+        }
+
+        .slider-val {
+            float: right;
+            color: var(--warning);
+            font-family: 'Fira Code', monospace;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">PIXEL<span>PLOT</span> V2.1</div>
+        <div style="display:flex; gap:20px; align-items: center">
+            <div id="contract-badge"
+                style="font-size: 11px; background: #1e293b; padding: 4px 10px; border-radius: 4px; color: var(--text-dim);">
+                CONTRACT: <span id="display-contract-id">...</span>
+            </div>
+            <div class="wallet-status">
+                <div class="status-dot"></div>
+                <div style="text-align:left">
+                    <div id="display-wallet-addr" style="font-size: 13px; font-weight: 600;">Connecting...</div>
+                    <div id="display-wallet-balance" style="font-size: 11px; color: var(--success);">0 SAT</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="log-stream" id="log-stream"></div>
+
+    <div class="main-layout">
+        <div class="viewport">
+            <h3>GRID VIEW</h3>
+            <div id="grid-container">
+                <div class="quadrant-lines" id="quadrant-overlay">
+                    <!-- Dynamic Grid Overlays -->
+                </div>
+                <div id="grid"></div>
+            </div>
+            <div style="margin-top:20px; color: var(--text-dim); font-size: 0.8rem; display: flex; gap: 20px;">
+                <span>Left click to draw (Paint) or select (Rent)</span>
+                <span>Right click drag to move</span>
+                <span>Scroll to zoom</span>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="card">
+                <h3>PALETTE <span id="selected-price">1 SAT</span></h3>
+                <div class="palette" id="palette"></div>
+            </div>
+
+            <div class="card">
+                <div id="plot-info-card" style="margin-top:10px; font-size: 12px; color: var(--text-dim);">
+                    Hover over grid to see plot info
+                </div>
+                <div id="rent-queue-info"
+                    style="display:none; color: var(--warning); margin-top:10px; font-size: 11px;">
+                    + Pending Rent for P<span id="rent-p-idx"></span> Q<span id="rent-q-idx"></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>CONFIGURATION</h3>
+                <div style="margin-bottom:12px">
+                    <label
+                        style="font-size:11px; color: var(--text-dim); display:block; margin-bottom:5px">PROVIDER</label>
+                    <select id="provider-select"
+                        style="width:100%; background:#0f172a; border:1px solid #334155; color:white; padding:8px; border-radius:8px; font-size:13px">
+                        <option value="scrypt">sCrypt Service (ARC)</option>
+                        <option value="woc" selected>Whatsonchain (Default)</option>
+                        <option value="taal">Taal ARC (Patched)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:12px">
+                    <label style="font-size:11px; color: var(--text-dim); display:block; margin-bottom:5px">PRIVATE
+                        WIF</label>
+                    <input type="password" id="wif-input" class="wallet-input" placeholder="Enter WIF"
+                        style="width:100%">
+                </div>
+                <button class="btn btn-ghost" style="width:100%; padding: 8px" onclick="applySettings()">Update
+                    Client</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-shelf" id="bottom-shelf">
+        <div class="log-container" id="log-stream"></div>
+
+        <div class="queue-panel">
+            <h3 style="margin:0 0 10px 0; font-size:12px; color: var(--text-dim);">TRANSACTION QUEUE</h3>
+            <div id="queue-list">
+                <div style="color:rgba(255,255,255,0.2); text-align:center; padding:20px;">No pending actions</div>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="mode-switch">
+                <button class="mode-btn active" id="paint-mode-btn" onclick="setMode('paint')">PAINT</button>
+                <button class="mode-btn" id="rent-mode-btn" onclick="setMode('rent')">RENT</button>
+            </div>
+
+            <div class="fee-slider-container">
+                <label style="font-size:11px; color: var(--text-dim);">FEE RATE <span class="slider-val"
+                        id="fee-val">100</span></label>
+                <input type="range" id="fee-slider" min="100" max="1000" step="20" value="100" style="width:100%"
+                    oninput="updateFeeLabel(this.value)">
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:auto">
+                <button class="btn btn-ghost" style="flex:1" onclick="resetAll()">RESET</button>
+                <button class="btn btn-success" id="process-btn" style="flex:2" onclick="startExecution()">
+                    EXECUTE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./deploy/scrypt_bundle.js"></script>
+
+    <script>
+        // --- CONSTANTS ---
+        const COLORS = [
+            "#FFFFFF", "#000000", "#FF4500", "#FFA800", "#FFD635", "#00A368", "#7EED56", "#2450A4",
+            "#3690EA", "#51E9F4", "#811E9F", "#B44AC0", "#FF99AA", "#9C6926", "#D4D7D9", "#898D90",
+            "#FF3881", "#00756F", "#009EAA", "#493AC1", "#00CC78", "#6D482F", "#6D001A", "#FFF8D8",
+            "#00CCC0", "#94B3FF", "#E4ABFF", "#DE107F", "#FFB470", "#515252", "#BE0039", "#FF96AA"
+        ];
+        const DEFAULT_WIF = "";
+
+        // --- STATE ---
+        let plots = []; // 25 plot objects: { index, genesisId, headId, instance, originalPixels, modifiedIndices, queuedRent }
+        let currentPixels = new Uint8Array(140 * 140).fill(0);
+        let selectedColor = 0;
+        let isDrawing = false;
+        let currentMode = 'paint'; // 'paint' or 'rent'
+        let feeRate = 100;
+
+        // Pan & Zoom state
+        let scale = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        // --- INIT ---
+        window.onload = async () => {
+            initPalette();
+            initGrid();
+            initPanZoom();
+            await refreshWallet();
+            await loadGrid();
+            updatePriceLabel();
+
+            // Show bottom shelf correctly
+            document.getElementById('bottom-shelf').classList.add('visible');
+        };
+
+        async function loadGrid() {
+            addLog("Syncing Grid (Fast)...");
+            try {
+                const meta = [
+                    { "index": 0, "owner": "1P4W5w2bL6wEmjrJfgUy37naivcXQduqNq", "txid": "70d449cf9eaba72c938d4c0c10e39a223bd5847b7e1e70c520b4df1bc4861274" },
+                    { "index": 1, "owner": "17FK3tdKqa5vD2VLFw9gECasDSVfPKKzgM", "txid": "0dba2e22c37bce02dcfb692f1a7abf6777d3a9c806f87c01eaa3ad5f8c9d6f15" },
+                    { "index": 2, "owner": "114aQeouD8puU1m4QcTBXA7Zam8CYuGDDi", "txid": "c0b2b41b7b72f7fad170a05fdfc5093ae0a6c9ca70b02da1af73a763ab08468c" },
+                    { "index": 3, "owner": "1PGNR2KMikwwN9m1rvNAgZBCBrZUr5eHbJ", "txid": "67098ef152a47fc4e7240ab19db4235a144bec3add859648e8e4ba44d86cb9fe" },
+                    { "index": 4, "owner": "15pRFCaqTZZS1atfxyeJ9AAPK3fVYbuAAV", "txid": "6d80dad3de1f6c4d9c31dd6d084364d14e1f79aca2d280bfd572e6277ec2f73e" },
+                    { "index": 5, "owner": "1Ab9TYd3ht1vXQMb3v64FY3iAkpowr7hJJ", "txid": "51b347cf443a1f2eafd0e24399011f5953868e641882991e8836bbed09fcc831" },
+                    { "index": 6, "owner": "1GQX8HfxPRREEbCjy3Vbp57CyfhHdo3Yes", "txid": "6954c04eccbdca6b43ddd94dce099a42e04eb1437bbb2940c7d6d18807f4af5a" },
+                    { "index": 7, "owner": "13gqJQv6srBua5MAKwVK6jLRKqnQivQpju", "txid": "4d99001bf2a690925c1fe8c2bada2ff5847a8eec59617ade2c3626e6279754e7" },
+                    { "index": 8, "owner": "16p13WZgWGqENoFvoaQ1kexT2ZEXBYfw3b", "txid": "7a2f137c1dd992a40fc66d27ef52f88c2792e4c5b4de0602cccb9cffe66d8f2e" },
+                    { "index": 9, "owner": "1HPU58vxvwr9gg2Fh6obvw7cedPVUpQacY", "txid": "14d7e2f401e30fd539e20b7c5511761a1d48e8c0d1bc1597bf5ee54c8283dae4" },
+                    { "index": 10, "owner": "1GfrZQHrv2o9CrPLW3t45j7ePGG1hvxB4r", "txid": "dd83d593013d931791c70492c2ef87115fdc73c6e2bf353744e8341676cda8f4" },
+                    { "index": 11, "owner": "13Q7EjhxxU79xwHCZSjx5BcRJPtwBHM1wi", "txid": "a8ede2cc68e81ed8e94a4546fafd32115e25eb23e7b41762fe543e29dcae0c35" },
+                    { "index": 12, "owner": "121CH8s6r7xbS6SmPfbYY1M6k6HLxTP5D3", "txid": "a15c037de72a403d96cb8069be2765a5a54eadad157abbefc40491e3cf08e0c8" },
+                    { "index": 13, "owner": "19MB7X2DdWhuf8mYvi1QXPocdkivi726qX", "txid": "26b2e6dc26423132127ec14e7d0558e422d9896c8b06a6fb6d4d623401c749f1" },
+                    { "index": 14, "owner": "1GqKQvHq7Yd127ZHZoQqod2hZsF8iDFneW", "txid": "c42cde33048ddb7c0b9a9b7cda53f5c967b66dba8cb5a48dec022412da8596a6" },
+                    { "index": 15, "owner": "1C1U2X9U74CVd1WQrFQianAbFrPtcTdCyE", "txid": "80d93781c543f1965c40b95529ff0c2a9bec06767a8cbf662db7e73f70b2c62a" },
+                    { "index": 16, "owner": "1CTrUetoWrEGXLSzCcL3CXwU7gF7g2PWE4", "txid": "4a3f7f3d2df980757861e9e8e441ffc122b2712514504b4219d2a5ae2d1931c7" },
+                    { "index": 17, "owner": "17VYrhG27V2tMB3Jv9rmMHoDaV32BNmtre", "txid": "aa29b7ef34da69c7fbbe39f83d16a725201e37313ac94081f0571aa61163ae9a" },
+                    { "index": 18, "owner": "1J5m332nTUE1L1qHh6SLJyAzyRorcDAJsi", "txid": "0053a5d5c76f6c579930685c192a36ce06c3fb1778a1890fed80ef48e2ed5288" },
+                    { "index": 19, "owner": "13LrNQNfYo14i6w4wHJpq97VjEcm12Uuix", "txid": "253300b2966a64b15101137c811870b46788a69be4fb2dcaa0c9f03e2ebf1f41" },
+                    { "index": 20, "owner": "1PJ2UJkiWrP3KtEQi8TrGtaZquipDAGF4Q", "txid": "5d629ce322a7c485f26c3fee98d3b5b6779ebf75494e5a12ecc3b50d7de4d3ca" },
+                    { "index": 21, "owner": "1CRUGtrHJ1jugxy5kG6V1Bv7YgowXHSRru", "txid": "adf80588966ff30ca1890f6c79adadb85a5355cf2ba0c1d910a2a2f0ddae7b5f" },
+                    { "index": 22, "owner": "1KjNE68uihpR2efpL2MiezaCykcctQGjr6", "txid": "4b545b7f137ad3410c14c9d56cb5bb975c5a6bffa57c6246367bd6a0271eebaf" },
+                    { "index": 23, "owner": "1DXEArxYN2UwPAmFjSMg6bjPpafXzS4nt2", "txid": "bb294e4845f6301c0c67db0a134d1500663154ca976f889295a048948df31dc0" },
+                    { "index": 24, "owner": "1M1DDEbvcJCnmvLUVqSENWX7qTsVCAxrpc", "txid": "79718875261bba8419b2dc8aad65e58e901efebbd54f368c8f3797036afeb522" }
+                ];
+
+                plots = meta.map(m => ({
+                    index: m.index,
+                    genesisId: m.txid,
+                    headId: m.txid,
+                    instance: null,
+                    originalPixels: new Uint8Array(28 * 28).fill(0),
+                    modifiedIndices: new Set(),
+                    queuedRent: null
+                }));
+
+                const { bsv, PixelPlot28 } = ScryptBundle;
+
+                // 1. Resolve all heads using parallel direct calls
+                addLog("Following contract chains...");
+                await Promise.all(plots.map(async p => {
+                    p.headId = await findHead(p.genesisId);
+                }));
+
+                // 2. Fetch all transaction data in bulk (Direct)
+                addLog(`Fetching ${plots.length} transactions...`);
+                const headIds = plots.map(p => p.headId);
+                const txDataMap = await fetchBulkHexDirect(headIds);
+
+                // 3. Instantiate and decode
+                for (const plot of plots) {
+                    const hex = txDataMap[plot.headId];
+                    if (hex) {
+                        const tx = new bsv.Transaction(hex);
+                        plot.instance = PixelPlot28.fromTx(tx, 0);
+                        decodePlotState(plot);
+                    }
+                }
+
+                addLog("Grid Ready!", "success");
+                drawGridOverlays();
+            } catch (e) {
+                addLog("Sync Error: " + e.message, "error");
+            }
+        }
+
+        async function fetchBulkHexDirect(txids) {
+            const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/txs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ txids })
+            });
+            if (!resp.ok) throw new Error("Bulk fetch failed");
+            const data = await resp.json();
+            const map = {};
+            data.forEach(tx => map[tx.txid] = tx.hex);
+            return map;
+        }
+
+        async function findHead(txid, outIdx = 0) {
+            try {
+                const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ utxos: [{ txid, vout: outIdx }] })
+                });
+                const data = await resp.json();
+                const info = data[0];
+                if (info && info.spentIn) {
+                    return findHead(info.spentIn.txid || info.spentIn.tx_hash, 0);
+                }
+                return txid;
+            } catch (e) { return txid; }
+        }
+
+        async function fetchBulkSpent(utxos) {
+            const url = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
+            // Use corsproxy.io for smaller POST requests
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ utxos })
+            });
+            return await res.json();
+        }
+
+        function drawGridOverlays() {
+            const overlay = document.getElementById('quadrant-overlay');
+            overlay.innerHTML = '';
+
+            // Draw lines every 28 pixels (Plot boundaries)
+            for (let i = 1; i < 5; i++) {
+                const hLine = document.createElement('div');
+                hLine.style.position = 'absolute';
+                hLine.style.top = (i * 28 * 5) + 'px'; // 5 is pixel size base
+                hLine.style.left = '0';
+                hLine.style.right = '0';
+                hLine.style.height = '1px';
+                hLine.style.backgroundColor = 'rgba(56, 189, 248, 0.5)';
+                overlay.appendChild(hLine);
+
+                const vLine = document.createElement('div');
+                vLine.style.position = 'absolute';
+                vLine.style.left = (i * 28 * 5) + 'px';
+                vLine.style.top = '0';
+                vLine.style.bottom = '0';
+                vLine.style.width = '1px';
+                vLine.style.backgroundColor = 'rgba(56, 189, 248, 0.5)';
+                overlay.appendChild(vLine);
+            }
+        }
+
+        async function syncPlot(plot) {
+            const { PixelPlot28, bsv } = ScryptBundle;
+            try {
+                const provider = await getProvider();
+                const wif = getWif();
+                const addr = bsv.PrivateKey.fromWIF(wif).toAddress().toString();
+
+                const headId = await findHead(plot.genesisId, 0, addr);
+                plot.headId = headId;
+
+                const tx = await provider.getTransaction(headId);
+                plot.instance = PixelPlot28.fromTx(tx, 0);
+
+                decodePlotState(plot);
+            } catch (e) {
+                addLog(`Plot ${plot.index} sync failed: ${e.message}`, "error");
+            }
+        }
+
+        function decodePlotState(plot) {
+            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
+            let n = 0n;
+            for (let i = 0; i < rawHex.length; i += 2) {
+                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                n |= (byte << (BigInt(i / 2) * 8n));
+            }
+
+            const plotRow = Math.floor(plot.index / 5);
+            const plotCol = plot.index % 5;
+
+            for (let i = 0; i < 784; i++) {
+                const color = Number((n >> (BigInt(i) * 5n)) & 31n);
+                plot.originalPixels[i] = color;
+
+                // Map to global grid
+                const localY = Math.floor(i / 28);
+                const localX = i % 28;
+                const globalY = plotRow * 28 + localY;
+                const globalX = plotCol * 28 + localX;
+                const globalIdx = globalY * 140 + globalX;
+
+                currentPixels[globalIdx] = color;
+                const el = document.getElementById(`p${globalIdx}`);
+                if (el) el.style.backgroundColor = COLORS[color];
+            }
+            plot.modifiedIndices.clear();
+            updateQueueUI();
+        }
+
+        function initPalette() {
+            const container = document.getElementById('palette');
+            COLORS.forEach((c, i) => {
+                const div = document.createElement('div');
+                div.className = 'swatch' + (i === 0 ? ' selected' : '');
+                div.style.backgroundColor = c;
+                div.onclick = () => selectColor(i);
+                container.appendChild(div);
+            });
+        }
+
+        function initGrid() {
+            const container = document.getElementById('grid');
+            container.style.gridTemplateColumns = `repeat(140, var(--pixel-size))`;
+
+            const fragment = document.createDocumentFragment();
+            for (let i = 0; i < 140 * 140; i++) {
+                const d = document.createElement('div');
+                d.className = 'pixel';
+                d.id = `p${i}`;
+                d.onmousedown = (e) => {
+                    if (e.button === 0) { // Left click
+                        if (currentMode === 'paint') {
+                            isDrawing = true; paint(i);
+                        } else {
+                            handleRentClick(i);
+                        }
+                        e.preventDefault();
+                    }
+                };
+                d.onmouseenter = () => {
+                    if (isDrawing && currentMode === 'paint') paint(i);
+                    updateHoverInfo(i);
+                };
+                fragment.appendChild(d);
+            }
+            container.appendChild(fragment);
+            window.addEventListener('mouseup', () => isDrawing = false);
+        }
+
+        function updateHoverInfo(globalIdx) {
+            const y = Math.floor(globalIdx / 140);
+            const x = globalIdx % 140;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 5 + plotCol;
+
+            const localY = y % 28;
+            const localX = x % 28;
+            const qX = Math.floor(localX / 14);
+            const qY = Math.floor(localY / 14);
+            const qIdx = qY * 2 + qX;
+
+            document.getElementById('plot-info-card').innerHTML = `
+                <div style="color:var(--accent); font-weight:600">PLOT ${plotIdx}</div>
+                <div>X: ${x}, Y: ${y}</div>
+                <div>Quadrant: Q${qIdx}</div>
+            `;
+        }
+
+        function initPanZoom() {
+            const container = document.getElementById('grid-container');
+            const viewport = document.querySelector('.viewport');
+
+            viewport.onwheel = (e) => {
+                e.preventDefault();
+                const zoomSpeed = 0.1;
+                const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
+                scale = Math.min(Math.max(0.1, scale + delta), 10);
+                updateTransform();
+            };
+
+            viewport.onmousedown = (e) => {
+                if (e.button === 2) { // Right click
+                    isPanning = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    container.style.cursor = 'grabbing';
+                }
+            };
+
+            window.onmousemove = (e) => {
+                if (isPanning) {
+                    const dx = e.clientX - lastMouseX;
+                    const dy = e.clientY - lastMouseY;
+                    panX += dx;
+                    panY += dy;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    updateTransform();
+                }
+            };
+
+            window.onmouseup = () => {
+                isPanning = false;
+                container.style.cursor = 'grab';
+            };
+
+            viewport.oncontextmenu = (e) => e.preventDefault();
+        }
+
+        function updateTransform() {
+            const container = document.getElementById('grid-container');
+            container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        }
+
+        // --- UI ACTIONS ---
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('paint-mode-btn').classList.toggle('active', mode === 'paint');
+            document.getElementById('rent-mode-btn').classList.toggle('active', mode === 'rent');
+            addLog(`Switched to ${mode.toUpperCase()} mode.`);
+        }
+
+        function updateFeeLabel(val) {
+            feeRate = parseInt(val);
+            document.getElementById('fee-val').innerText = val;
+        }
+
+        function selectColor(idx) {
+            selectedColor = idx;
+            document.querySelectorAll('.swatch').forEach((s, i) => s.classList.toggle('selected', i === idx));
+            updatePriceLabel();
+        }
+
+        function updatePriceLabel() {
+            let price = (selectedColor <= 1) ? 1 : (selectedColor >= 28 ? 5 : 3);
+            document.getElementById('selected-price').innerText = `${price} SAT / PIXEL`;
+        }
+
+        function paint(globalIdx) {
+            const y = Math.floor(globalIdx / 140);
+            const x = globalIdx % 140;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 5 + plotCol;
+            const plot = plots[plotIdx];
+
+            if (currentPixels[globalIdx] === selectedColor) return;
+            currentPixels[globalIdx] = selectedColor;
+            document.getElementById(`p${globalIdx}`).style.backgroundColor = COLORS[selectedColor];
+
+            const localY = y % 28;
+            const localX = x % 28;
+            const localIdx = localY * 28 + localX;
+
+            if (currentPixels[globalIdx] !== plot.originalPixels[localIdx]) {
+                plot.modifiedIndices.add(localIdx);
+                document.getElementById(`p${globalIdx}`).classList.add('modified');
+            } else {
+                plot.modifiedIndices.delete(localIdx);
+                document.getElementById(`p${globalIdx}`).classList.remove('modified');
+            }
+            updateQueueUI();
+        }
+
+        function handleRentClick(globalIdx) {
+            const y = Math.floor(globalIdx / 140);
+            const x = globalIdx % 140;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 5 + plotCol;
+            const plot = plots[plotIdx];
+
+            const localY = y % 28;
+            const localX = x % 28;
+            const qX = Math.floor(localX / 14);
+            const qY = Math.floor(localY / 14);
+            const qIdx = qY * 2 + qX;
+
+            if (plot.queuedRent === qIdx) {
+                plot.queuedRent = null;
+                addLog(`Cancelled rent for Plot ${plotIdx} Q${qIdx}`);
+            } else {
+                plot.queuedRent = qIdx;
+                addLog(`Queued rent for Plot ${plotIdx} Q${qIdx}`);
+            }
+            updateQueueUI();
+        }
+
+        function updateQueueUI() {
+            const queueList = document.getElementById('queue-list');
+            queueList.innerHTML = '';
+
+            let totalPlots = 0;
+            plots.forEach(plot => {
+                if (plot.modifiedIndices.size > 0 || plot.queuedRent !== null) {
+                    totalPlots++;
+                    const div = document.createElement('div');
+                    div.className = 'plot-group';
+                    const rentText = plot.queuedRent !== null ? ` + RENT Q${plot.queuedRent}` : '';
+                    div.innerHTML = `
+                        <h4>Plot ${plot.index} <span>${plot.modifiedIndices.size} px${rentText}</span></h4>
+                        <div style="font-size:10px; color:rgba(255,255,255,0.3)">Head: ${plot.headId.substring(0, 10)}...</div>
+                    `;
+                    queueList.appendChild(div);
+                }
+            });
+
+            if (totalPlots === 0) {
+                queueList.innerHTML = '<div style="color:rgba(255,255,255,0.2); text-align:center; padding:20px;">No pending actions</div>';
+            }
+        }
+
+        function addLog(msg, type = '') {
+            const stream = document.getElementById('log-stream');
+            const div = document.createElement('div');
+            div.className = 'log-msg' + (type ? ' ' + type : '');
+            div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            stream.prepend(div);
+            console.log(msg);
+        }
+
+        async function findHead(txid, outIdx = 0, userAddress = null) {
+            try {
+                const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ utxos: [{ txid, vout: outIdx }] })
+                });
+                const data = await resp.json();
+                const info = data[0];
+                if (info && info.spentIn) {
+                    return findHead(info.spentIn.txid || info.spentIn.tx_hash, 0, userAddress);
+                }
+                return txid;
+            } catch (e) { return txid; }
+        }
+
+        async function getProvider() {
+            const { WhatsonchainProvider, bsv } = ScryptBundle;
+            const p = new WhatsonchainProvider(bsv.Networks.mainnet);
+            p._feePerKb = feeRate;
+            return p;
+        }
+
+        function getWif() {
+            return document.getElementById('wif-input').value.trim() || DEFAULT_WIF;
+        }
+
+        async function refreshWallet() {
+            const { bsv } = ScryptBundle;
+            try {
+                const wif = getWif();
+                const priv = bsv.PrivateKey.fromWIF(wif);
+                const addr = priv.toAddress().toString();
+                document.getElementById('display-wallet-addr').innerText = addr.substring(0, 12) + '...';
+                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`);
+                const data = await res.json();
+                document.getElementById('display-wallet-balance').innerText = ((data.confirmed || 0) + (data.unconfirmed || 0)) + ' SAT';
+            } catch (e) { }
+        }
+
+        async function startExecution() {
+            const btn = document.getElementById('process-btn');
+            btn.disabled = true;
+            btn.innerText = "EXECUTING...";
+
+            const { TestWallet, bsv } = ScryptBundle;
+            const wif = getWif();
+            const priv = bsv.PrivateKey.fromWIF(wif);
+            const provider = await getProvider();
+            const signer = new TestWallet(priv, provider);
+
+            try {
+                for (const plot of plots) {
+                    if (plot.modifiedIndices.size === 0 && plot.queuedRent === null) continue;
+
+                    addLog(`Processing Plot ${plot.index}...`);
+                    await plot.instance.connect(signer);
+
+                    // 1. Handle Rent if any
+                    if (plot.queuedRent !== null) {
+                        await executeRent(plot, signer);
+                        plot.queuedRent = null;
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+
+                    // 2. Handle Pixels
+                    const list = Array.from(plot.modifiedIndices);
+                    const batches = Math.ceil(list.length / 30);
+                    for (let i = 0; i < batches; i++) {
+                        const batch = list.slice(i * 30, (i + 1) * 30);
+                        await executeBatch(plot, batch, signer);
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+                }
+                addLog("Execution complete!", "success");
+                await refreshWallet();
+            } catch (e) {
+                addLog(`Execution Error: ${e.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "EXECUTE";
+                updateQueueUI();
+            }
+        }
+
+        async function executeRent(plot, signer) {
+            const { bsv, PubKeyHash, Utils, toByteString } = ScryptBundle;
+            const q = plot.queuedRent;
+            const wif = getWif();
+            const priv = bsv.PrivateKey.fromWIF(wif);
+            const pkh = priv.toAddress().hashBuffer.toString('hex');
+
+            const numBlocks = 144n;
+            const cost = numBlocks * plot.instance.rentPricePerBlock;
+
+            addLog(`DEBUG: Plot ${plot.index} Renting Q${q} for ${cost} sats.`);
+
+            plot.instance.bindTxBuilder('rent', async (current, options) => {
+                const nextInstance = current.next();
+                const tx = new bsv.Transaction();
+                tx.nLockTime = 0; // Fixed locktime for stable simulation
+
+                nextInstance.renters[q] = PubKeyHash(toByteString(pkh));
+                nextInstance.rentEnds[q] = BigInt(tx.nLockTime) + numBlocks;
+
+                tx.addInput(current.buildContractInput());
+
+                // 1. Contract State Output
+                tx.addOutput(new bsv.Transaction.Output({
+                    script: nextInstance.lockingScript,
+                    satoshis: current.utxo.satoshis
+                }));
+
+                // 2. Owner Payment Output
+                tx.addOutput(new bsv.Transaction.Output({
+                    script: bsv.Script.fromHex(Utils.buildPublicKeyHashScript(current.owner)),
+                    satoshis: Number(cost)
+                }));
+
+                // 3. Change Output
+                if (options.changeAddress) {
+                    tx.change(options.changeAddress);
+                }
+
+                return { tx, atInputIndex: 0, nexts: [{ instance: nextInstance, atOutputIndex: 0 }] };
+            });
+
+            const txResult = await plot.instance.methods.rent(
+                BigInt(q),
+                PubKeyHash(toByteString(pkh)),
+                numBlocks,
+                { changeAddress: priv.toAddress(), feePerKb: feeRate }
+            );
+
+            plot.instance = txResult.next ? txResult.next.instance : plot.instance;
+            plot.headId = txResult.tx.id;
+            addLog(`Plot ${plot.index} Rented: ${plot.headId.substring(0, 8)}`, "success");
+        }
+
+        async function executeBatch(plot, list, signer) {
+            const { bsv, toByteString, Utils } = ScryptBundle;
+            const wif = getWif();
+            const priv = bsv.PrivateKey.fromWIF(wif);
+
+            const updates = list.map(idx => ({
+                index: BigInt(idx),
+                color: BigInt(currentPixels[getGlobalIdxFromLocal(plot, idx)])
+            }));
+            const numUpdates = updates.length;
+            while (updates.length < 30) updates.push({ index: 0n, color: 0n });
+
+            addLog(`DEBUG: Plot ${plot.index} Updating ${numUpdates} pixels...`);
+
+            plot.instance.bindTxBuilder('updatePixels', async (current, options) => {
+                const nextInstance = current.next();
+                const tx = new bsv.Transaction();
+                tx.nLockTime = 0; // Keep consistent with simulation
+
+                let ownerGain = 0n;
+                let renterGains = [0n, 0n, 0n, 0n];
+
+                // --- CONTRACT LOGIC SIMULATION ---
+                let pixelsInt = 0n;
+                const rawHex = current.pixels.startsWith('0x') ? current.pixels.slice(2) : current.pixels;
+                for (let i = 0; i < rawHex.length; i += 2) {
+                    const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                    pixelsInt |= (byte << (BigInt(i / 2) * 8n));
+                }
+
+                for (let i = 0; i < 30; i++) {
+                    if (BigInt(i) < BigInt(numUpdates)) {
+                        const u = updates[i];
+                        const idx = u.index;
+                        const color = u.color;
+
+                        const x = idx % 28n;
+                        const y = idx / 28n;
+                        const qIdx = Number((y / 14n) * 2n + (x / 14n));
+
+                        const rentEnd = current.rentEnds[qIdx];
+                        const isRented = BigInt(tx.nLockTime) < rentEnd;
+
+                        let price = 3n;
+                        if (color <= 1n) price = 1n;
+                        else if (color >= 28n) price = 5n;
+
+                        if (isRented) {
+                            ownerGain += 1n;
+                            renterGains[qIdx] += (price - 1n);
+                        } else {
+                            ownerGain += price;
+                        }
+
+                        const shift = idx * 5n;
+                        const currentBits = (pixelsInt >> shift) & 31n;
+                        pixelsInt = pixelsInt - (currentBits << shift) + (color << shift);
+                    }
+                }
+
+                nextInstance.pixels = bigintToLEHex(pixelsInt, 490);
+
+                tx.addInput(current.buildContractInput());
+
+                // 1. Contract State Output
+                tx.addOutput(new bsv.Transaction.Output({
+                    script: nextInstance.lockingScript,
+                    satoshis: current.utxo.satoshis
+                }));
+
+                // 2. Owner Output
+                if (ownerGain > 0n) {
+                    tx.addOutput(new bsv.Transaction.Output({
+                        script: bsv.Script.fromHex(Utils.buildPublicKeyHashScript(current.owner)),
+                        satoshis: Number(ownerGain)
+                    }));
+                }
+
+                // 3. Renter Outputs (order Q0 to Q3)
+                for (let q = 0; q < 4; q++) {
+                    if (renterGains[q] > 0n) {
+                        tx.addOutput(new bsv.Transaction.Output({
+                            script: bsv.Script.fromHex(Utils.buildPublicKeyHashScript(current.renters[q])),
+                            satoshis: Number(renterGains[q])
+                        }));
+                    }
+                }
+
+                // 4. Change Output
+                if (options.changeAddress) {
+                    tx.change(options.changeAddress);
+                }
+
+                addLog(`DEBUG: Plot ${plot.index} Sim -> Owner:${ownerGain}, Renters:${renterGains.join(',')}`);
+                return { tx, atInputIndex: 0, nexts: [{ instance: nextInstance, atOutputIndex: 0 }] };
+            });
+
+            const txResult = await plot.instance.methods.updatePixels(updates, BigInt(numUpdates), {
+                changeAddress: priv.toAddress(),
+                feePerKb: feeRate
+            });
+
+            plot.instance = txResult.next ? txResult.next.instance : plot.instance;
+            plot.headId = txResult.tx.id;
+
+            list.forEach(idx => {
+                plot.originalPixels[idx] = currentPixels[getGlobalIdxFromLocal(plot, idx)];
+                plot.modifiedIndices.delete(idx);
+                document.getElementById(`p${getGlobalIdxFromLocal(plot, idx)}`).classList.remove('modified');
+            });
+
+            addLog(`Plot ${plot.index} Batch Confirmed`, "success");
+        }
+
+        function getGlobalIdxFromLocal(plot, localIdx) {
+            const plotRow = Math.floor(plot.index / 5);
+            const plotCol = plot.index % 5;
+            const localY = Math.floor(localIdx / 28);
+            const localX = localIdx % 28;
+            const globalY = plotRow * 28 + localY;
+            const globalX = plotCol * 28 + localX;
+            return globalY * 140 + globalX;
+        }
+
+        function bigintToLEHex(n, bytesCount) {
+            let hex = n.toString(16);
+            if (hex.length % 2 !== 0) hex = '0' + hex;
+            const parts = [];
+            for (let i = 0; i < hex.length; i += 2) {
+                parts.push(hex.substring(i, i + 2));
+            }
+            parts.reverse();
+            let res = parts.join('');
+            return res.padEnd(bytesCount * 2, '0');
+        }
+
+        function resetAll() {
+            plots.forEach(plot => {
+                plot.modifiedIndices.forEach(localIdx => {
+                    const globalIdx = getGlobalIdxFromLocal(plot, localIdx);
+                    currentPixels[globalIdx] = plot.originalPixels[localIdx];
+                    document.getElementById(`p${globalIdx}`).style.backgroundColor = COLORS[plot.originalPixels[localIdx]];
+                    document.getElementById(`p${globalIdx}`).classList.remove('modified');
+                });
+                plot.modifiedIndices.clear();
+                plot.queuedRent = null;
+            });
+            updateQueueUI();
+            addLog("All pending changes reset.");
+        }
+
+        function applySettings() {
+            refreshWallet();
+            loadGrid();
+            addLog("Settings applied. Reloading grid...");
+        }
+    </script>
+</body>
+
+</html>

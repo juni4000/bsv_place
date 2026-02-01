@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>PixelPlot45 2x2 Grid</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #f0f0f0;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #3b82f6;
+            margin-bottom: 20px;
+        }
+
+        #main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        :root {
+            --pixel-size: 8px;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(90, var(--pixel-size));
+            gap: 0px;
+            background: #333;
+            padding: 2px;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            user-select: none;
+            cursor: crosshair;
+            border: 2px solid #555;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        .pixel {
+            width: var(--pixel-size);
+            height: var(--pixel-size);
+        }
+
+        .pixel:hover {
+            box-shadow: inset 0 0 2px white;
+        }
+
+        /* Quadrant borders */
+        .pixel.border-r {
+            border-right: 1px solid #777;
+        }
+
+        .pixel.border-b {
+            border-bottom: 1px solid #777;
+        }
+
+        .pixel.c0 {
+            background: #ffffff;
+        }
+
+        .pixel.c1 {
+            background: #00ff00;
+        }
+
+        .pixel.c2 {
+            background: #000000;
+        }
+
+        .pixel.c3 {
+            background: #ff0000;
+        }
+
+        .controls {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .palette-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        .palette-item span {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .palette-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            border: 2px solid #555;
+        }
+
+        .palette-btn.selected {
+            border-color: #fff;
+            box-shadow: 0 0 8px white;
+        }
+
+        button.action-btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            background: #3b82f6;
+            color: white;
+        }
+
+        #tx-panel {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .log {
+            font-family: monospace;
+            font-size: 11px;
+            color: #aaa;
+            height: 120px;
+            overflow-y: auto;
+            text-align: left;
+            background: #111;
+            padding: 10px;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 800px;
+            white-space: pre-wrap;
+        }
+
+        .wallet-bar {
+            background: #232323;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            border: 1px solid #444;
+            font-size: 13px;
+        }
+
+        .wallet-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .wallet-input-group input {
+            background: #111;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            width: 180px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main-container">
+        <h1>PixelPlot45 <span style="font-size:0.6em; color:#888">2x2 Grid (90x90)</span></h1>
+
+        <div class="wallet-bar">
+            <div>
+                Wallet: <span id="wallet-addr" style="color:#3b82f6; font-family:monospace">...</span>
+                | <span id="wallet-balance" style="color:#10b981; font-weight:bold">0</span> sat
+            </div>
+            <div class="wallet-input-group">
+                <input type="password" id="wif-input" placeholder="WIF or Base64 WIF">
+                <button class="action-btn" style="padding:4px 10px; background:#444" onclick="applyNewWif()">Set
+                    Key</button>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="row">
+                <button class="action-btn" onclick="loadAllContracts()">Load All Plots</button>
+                <div style="margin-left:20px; font-weight: bold;">Palette:</div>
+                <div class="palette-item" onclick="selectColor(0)">
+                    <div class="palette-btn c0"></div>
+                    <span>White</span>
+                </div>
+                <div class="palette-item" onclick="selectColor(1)">
+                    <div class="palette-btn c1"></div>
+                    <span>Green</span>
+                </div>
+                <div class="palette-item" onclick="selectColor(2)">
+                    <div class="palette-btn c2"></div>
+                    <span>Black</span>
+                </div>
+                <div class="palette-item" onclick="selectColor(3)">
+                    <div class="palette-btn c3"></div>
+                    <span>Red</span>
+                </div>
+                <div style="margin-left:30px; display: flex; align-items: center; gap: 10px;">
+                    <label>Zoom:</label>
+                    <input type="range" min="2" max="20" value="8" step="1" id="zoom-slider"
+                        oninput="updateZoom(this.value)">
+                    <span id="zoom-val">8px</span>
+                </div>
+                <label style="margin-left:20px"><input type="checkbox" id="useDefaultWallet" checked> Use Default
+                    Wallet</label>
+            </div>
+            <div id="plot-status" style="font-size: 0.9em; color: #888;">
+                Plots loaded: <span id="loaded-count">0</span>/4
+            </div>
+        </div>
+
+        <div id="grid"></div>
+
+        <div id="tx-panel">
+            <h3 id="change-msg">Changes Detected</h3>
+            <div id="update-queue-container"
+                style="display: none; background: #1a1a1a; padding: 10px; border-radius: 4px; border: 1px solid #444; margin-bottom: 10px; text-align: left;">
+                <div
+                    style="font-size: 0.8em; color: #888; margin-bottom: 5px; text-transform: uppercase; font-weight: bold;">
+                    Update Queue</div>
+                <div id="update-queue-list"></div>
+            </div>
+            <div class="row">
+                <button id="update-btn" class="action-btn" style="background:#10b981" onclick="sendUpdates()">Update
+                    Modified Plots</button>
+                <button class="action-btn" style="background:#ef4444" onclick="resetAll()">Reset All</button>
+            </div>
+        </div>
+
+        <div id="status" class="log">Ready.</div>
+    </div>
+
+    <script src="./deploy/scrypt_bundle.js"></script>
+
+    <script>
+        // === Configuration ===
+        const DEFAULT_WIF = "";
+        const PLOT_SIZE = 45;
+        const FULL_SIZE = 90;
+        const STATE_SIZE_BYTES = 506;
+
+        const GRID_CONTRACTS = [
+            "93d5bf6aec4f8cc1c13460e9d54bf47e8fe42f8e64c4d6e7310bb3a31798939e", // TL
+            "e777514773d7b1d07fbeb4dd9654656600569d7660053bfa85a4fd3664d0919a", // TR
+            "55cdca275739f368c9557c1043bad2fcb22bf2306c7a1afd6c2440a4c4797399", // BL
+            "9ee11f2aff692582211c3998fce19e89fd942144109f5982800f44a74afc137b"  // BR
+        ];
+
+        // === State ===
+        let contractInstances = [null, null, null, null];
+        let quadrantCurrent = [new Uint8Array(506), new Uint8Array(506), new Uint8Array(506), new Uint8Array(506)];
+        let quadrantOriginal = [new Uint8Array(506), new Uint8Array(506), new Uint8Array(506), new Uint8Array(506)];
+        let quadrantDirty = [false, false, false, false];
+
+        let selectedColor = 1;
+        let isDrawing = false;
+
+        window.onload = function () {
+            initGrid();
+            selectColor(1);
+            if (window.location.protocol === 'file:') {
+                log("Warning: Running from file:// may cause CORS issues. Use a local server.", "error");
+            }
+            log("Initialized 90x90 grid.");
+            refreshWalletDisplay();
+            setTimeout(loadAllContracts, 500); // Auto-load on enter
+        };
+
+        function decodeBase64(str) {
+            if (!str) return str;
+            // WIFs are 52 chars. Base64 encoded WIFs are ~88 chars.
+            // Only decode if it's long and contains base64-specific characters.
+            if (str.length > 60 && (str.includes('=') || str.includes('+') || str.includes('/'))) {
+                try {
+                    const decoded = atob(str);
+                    if (decoded.length >= 50) return decoded;
+                } catch (e) { }
+            }
+            return str;
+        }
+
+        async function refreshWalletDisplay() {
+            try {
+                const { bsv } = ScryptBundle;
+                const wif = decodeBase64(getWif());
+                if (!wif) return;
+
+                const priv = bsv.PrivateKey.fromWIF(wif);
+                const addr = priv.toAddress().toString();
+                document.getElementById('wallet-addr').innerText = addr.substring(0, 8) + '...' + addr.substring(addr.length - 4);
+                document.getElementById('wallet-addr').title = addr;
+
+                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`);
+                if (!res.ok) throw new Error("API Limit reached");
+                const data = await res.json();
+                const total = (data.confirmed || 0) + (data.unconfirmed || 0);
+                document.getElementById('wallet-balance').innerText = total;
+
+                if (total < 2000) {
+                    log("Warning: Low wallet balance. Each plot update costs ~1000-1500 sats.", "error");
+                }
+            } catch (e) {
+                log("Wallet Error: " + e.message, "error");
+            }
+        }
+
+        function getWif() {
+            const input = document.getElementById('wif-input').value.trim();
+            if (input) return input;
+            return DEFAULT_WIF;
+        }
+
+        function applyNewWif() {
+            log("Applying new WIF...");
+            refreshWalletDisplay();
+            log("Wallet updated.");
+        }
+
+        let globalProvider = null;
+        function getProvider() {
+            if (!globalProvider) {
+                const { DefaultProvider, bsv } = ScryptBundle;
+                globalProvider = new DefaultProvider({ network: bsv.Networks.mainnet });
+            }
+            return globalProvider;
+        }
+
+        function log(msg) {
+            const el = document.getElementById('status');
+            const time = new Date().toLocaleTimeString();
+            el.innerText = `[${time}] ${msg}\n` + el.innerText;
+            console.log(`[${time}] ${msg}`);
+        }
+
+        async function fetchBulkHex(txids) {
+            if (txids.length === 0) return [];
+            try {
+                const url = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ txids })
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                return await resp.json();
+            } catch (e) {
+                log(`Bulk fetch failed: ${e.message}. Falling back to individual requests...`);
+                return [];
+            }
+        }
+
+        function initGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            for (let y = 0; y < FULL_SIZE; y++) {
+                for (let x = 0; x < FULL_SIZE; x++) {
+                    const d = document.createElement('div');
+                    d.className = 'pixel c0';
+                    if (x === PLOT_SIZE - 1) d.classList.add('border-r');
+                    if (y === PLOT_SIZE - 1) d.classList.add('border-b');
+
+                    const idx = y * FULL_SIZE + x;
+                    d.id = 'p' + idx;
+                    d.onmousedown = () => { isDrawing = true; paintPixel(x, y); };
+                    d.onmouseenter = () => { if (isDrawing) paintPixel(x, y); };
+                    grid.appendChild(d);
+                }
+            }
+            window.addEventListener('mouseup', () => { isDrawing = false; });
+        }
+
+        function selectColor(c) {
+            selectedColor = c;
+            document.querySelectorAll('.palette-item').forEach((item, i) => {
+                const btn = item.querySelector('.palette-btn');
+                btn.classList.toggle('selected', i === c);
+            });
+        }
+
+        function updateZoom(val) {
+            document.documentElement.style.setProperty('--pixel-size', val + 'px');
+            document.getElementById('zoom-val').innerText = val + 'px';
+        }
+
+        function paintPixel(x, y) {
+            const qX = Math.floor(x / PLOT_SIZE);
+            const qY = Math.floor(y / PLOT_SIZE);
+            const quadrant = qY * 2 + qX;
+
+            const relX = x % PLOT_SIZE;
+            const relY = y % PLOT_SIZE;
+            const relIdx = relY * PLOT_SIZE + relX;
+
+            const byteIdx = Math.floor(relIdx / 4);
+            const bitOffset = (3 - (relIdx % 4)) * 2;
+
+            let byte = quadrantCurrent[quadrant][byteIdx];
+            byte &= ~(0x03 << bitOffset);
+            byte |= (selectedColor << bitOffset);
+            quadrantCurrent[quadrant][byteIdx] = byte;
+
+            // UI
+            document.getElementById('p' + (y * FULL_SIZE + x)).className =
+                `pixel c${selectedColor}` +
+                (x === PLOT_SIZE - 1 ? ' border-r' : '') +
+                (y === PLOT_SIZE - 1 ? ' border-b' : '');
+
+            checkDirty();
+        }
+
+        function checkDirty() {
+            let anyDirty = false;
+            let dirtyCount = 0;
+            for (let q = 0; q < 4; q++) {
+                let d = false;
+                for (let i = 0; i < 506; i++) {
+                    if (quadrantCurrent[q][i] !== quadrantOriginal[q][i]) {
+                        d = true; break;
+                    }
+                }
+                quadrantDirty[q] = d;
+                if (d) { anyDirty = true; dirtyCount++; }
+            }
+
+            document.getElementById('tx-panel').style.display = anyDirty ? 'block' : 'none';
+            document.getElementById('change-msg').innerText = `${dirtyCount} plot(s) modified.`;
+        }
+
+        async function fetchLatestTxidsBulk(txids) {
+            let current = [...txids];
+            let results = [...txids];
+            let finished = new Array(txids.length).fill(false);
+
+            // Limited iterations to avoid infinite loops if API is weird
+            for (let iter = 0; iter < 50; iter++) {
+                const toCheck = [];
+                const checkIndices = [];
+                for (let i = 0; i < current.length; i++) {
+                    if (!finished[i]) {
+                        toCheck.push({ txid: current[i], vout: 0 });
+                        checkIndices.push(i);
+                    }
+                }
+                if (toCheck.length === 0) break;
+
+                try {
+                    const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ utxos: toCheck })
+                    });
+                    if (!resp.ok) {
+                        checkIndices.forEach(idx => finished[idx] = true);
+                        break;
+                    }
+                    const data = await resp.json();
+                    if (!Array.isArray(data)) {
+                        checkIndices.forEach(idx => finished[idx] = true);
+                        break;
+                    }
+
+                    const dataMap = {};
+                    data.forEach(item => { if (item.utxo) dataMap[item.utxo.txid] = item; });
+
+                    let madeProgress = false;
+                    for (let i = 0; i < checkIndices.length; i++) {
+                        const idx = checkIndices[i];
+                        const txid = current[idx];
+                        const item = dataMap[txid];
+
+                        if (item && item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
+                            const nextTxid = item.spentIn.txid || item.spentIn.tx_hash;
+                            current[idx] = nextTxid;
+                            results[idx] = nextTxid;
+                            madeProgress = true;
+                        } else {
+                            finished[idx] = true;
+                        }
+                    }
+                    if (!madeProgress) break;
+                } catch (e) {
+                    console.error("Bulk check failed", e);
+                    checkIndices.forEach(idx => finished[idx] = true);
+                    break;
+                }
+            }
+            return results;
+        }
+
+        async function loadAllContracts() {
+            log("Loading all 4 plots and following chain...");
+
+            try {
+                // Follow the chain using bulk API for all plots
+                const latestTxids = await fetchLatestTxidsBulk(GRID_CONTRACTS);
+                const hexResults = await fetchBulkHex(latestTxids);
+
+                let loaded = 0;
+                // Create a map for easy lookup
+                const hexMap = {};
+                hexResults.forEach(r => { if (r && r.hex) hexMap[r.txid] = r.hex; });
+
+                for (let i = 0; i < 4; i++) {
+                    const txid = latestTxids[i];
+                    const hex = hexMap[txid];
+
+                    try {
+                        if (hex) {
+                            await loadPlotFromHex(i, hex);
+                        } else {
+                            log(`Hex missing for ${txid}, trying individual fetch...`);
+                            await loadPlot(i, txid);
+                        }
+                        loaded++;
+                        document.getElementById('loaded-count').innerText = loaded;
+                    } catch (e) {
+                        log(`Failed to load plot ${i} (${txid.substring(0, 8)}): ${e.message}`);
+                    }
+                }
+                log("Load complete.");
+            } catch (e) {
+                log(`Bulk load failed: ${e.message}`);
+                // Fallback to old method if everything fails
+                for (let i = 0; i < 4; i++) {
+                    try { await loadPlot(i); } catch (e) { }
+                }
+            }
+        }
+
+        async function loadPlotFromHex(q, hex) {
+            const { PixelPlot45, bsv } = ScryptBundle;
+            const tx = new bsv.Transaction(hex);
+            const instance = PixelPlot45.fromTx(tx, 0);
+
+            contractInstances[q] = instance;
+            const bytes = hexToBytes(instance.pixels);
+            quadrantOriginal[q] = new Uint8Array(bytes);
+            quadrantCurrent[q] = new Uint8Array(bytes);
+
+            renderQuadrant(q, bytes);
+        }
+
+        async function loadPlot(q, txid) {
+            try {
+                if (!txid) txid = GRID_CONTRACTS[q];
+                const { PixelPlot45 } = ScryptBundle;
+                const provider = getProvider();
+                const tx = await provider.getTransaction(txid);
+                const instance = PixelPlot45.fromTx(tx, 0);
+                contractInstances[q] = instance;
+
+                const bytes = hexToBytes(instance.pixels);
+                quadrantOriginal[q] = new Uint8Array(bytes);
+                quadrantCurrent[q] = new Uint8Array(bytes);
+
+                renderQuadrant(q, bytes);
+            } catch (e) {
+                log(`Failed to fetch/parse plot ${q}: ${e.message}`, "error");
+            }
+        }
+
+        function renderQuadrant(q, bytes) {
+            const startX = (q % 2) * PLOT_SIZE;
+            const startY = Math.floor(q / 2) * PLOT_SIZE;
+
+            for (let i = 0; i < PLOT_SIZE * PLOT_SIZE; i++) {
+                const byteIdx = Math.floor(i / 4);
+                const bitOffset = (3 - (i % 4)) * 2;
+                const val = (bytes[byteIdx] >> bitOffset) & 0x03;
+
+                const relX = i % PLOT_SIZE;
+                const relY = Math.floor(i / PLOT_SIZE);
+                const absX = startX + relX;
+                const absY = startY + relY;
+
+                const el = document.getElementById('p' + (absY * FULL_SIZE + absX));
+                if (el) {
+                    el.className = `pixel c${val}` +
+                        (absX === PLOT_SIZE - 1 ? ' border-r' : '') +
+                        (absY === PLOT_SIZE - 1 ? ' border-b' : '');
+                }
+            }
+        }
+
+        async function sendUpdates() {
+            const btn = document.getElementById('update-btn');
+            if (btn) btn.disabled = true;
+
+            const { PixelPlot45, TestWallet, bsv, DefaultProvider, toByteString, Utils } = ScryptBundle;
+
+            let privateKey = bsv.PrivateKey.fromWIF(decodeBase64(getWif()));
+            const provider = getProvider();
+            const signer = new TestWallet(privateKey, provider);
+
+            let totalFeesSpent = 0;
+            const queueContainer = document.getElementById('update-queue-container');
+            const queueList = document.getElementById('update-queue-list');
+            queueContainer.style.display = 'block';
+            queueList.innerHTML = '';
+
+            const dirtyIndices = [];
+            for (let q = 0; q < 4; q++) {
+                if (quadrantDirty[q]) {
+                    dirtyIndices.push(q);
+                    const item = document.createElement('div');
+                    item.id = `queue-item-${q}`;
+                    item.style.fontSize = '12px';
+                    item.style.padding = '4px 0';
+                    item.style.color = '#888';
+                    item.innerHTML = `Plot ${q}: <span class="status">Waiting...</span>`;
+                    queueList.appendChild(item);
+                }
+            }
+
+            if (dirtyIndices.length === 0) {
+                queueContainer.style.display = 'none';
+                if (btn) btn.disabled = false;
+                return;
+            }
+
+            log("Syncing heads before update...");
+            try {
+                const latestTxids = await fetchLatestTxidsBulk(GRID_CONTRACTS);
+                for (let i = 0; i < 4; i++) {
+                    if (contractInstances[i] && contractInstances[i].utxo.txId !== latestTxids[i]) {
+                        log(`Plot ${i} has moved. Reloading latest state...`);
+                        await loadPlot(i, latestTxids[i]);
+                    }
+                }
+            } catch (e) { log("Sync failed, proceeding with current state..."); }
+
+            // Get height once
+            let currentHeight = 0;
+            try {
+                const res = await fetch('https://api.whatsonchain.com/v1/bsv/main/chain/info');
+                const json = await res.json();
+                currentHeight = json.blocks || 881000;
+            } catch (e) { currentHeight = 881000; }
+
+            const lockTime = currentHeight;
+            const newLockedUntil = BigInt(lockTime + 20);
+
+            for (const q of dirtyIndices) {
+                const queueItem = document.getElementById(`queue-item-${q}`);
+                const statusEl = queueItem.querySelector('.status');
+                statusEl.innerText = "Processing...";
+                statusEl.style.color = "#3b82f6";
+
+                let instance = contractInstances[q];
+                if (!instance || !instance.utxo) {
+                    statusEl.innerText = "Failed (Invalid Instance)";
+                    statusEl.style.color = "#ef4444";
+                    continue;
+                }
+
+                log(`Updating plot ${q} (TX: ${instance.utxo.txId.substring(0, 8)})...`);
+                try {
+                    await instance.connect(signer);
+
+                    if (!instance.utxo) throw new Error("Instance UTXO missing");
+
+                    const newPixels = toByteString(bytesToHex(quadrantCurrent[q]));
+                    const nextInstance = instance.next();
+                    nextInstance.pixels = newPixels;
+                    nextInstance.lockedUntil = newLockedUntil;
+                    nextInstance.lockedAmount = (instance.lockedAmount > instance.minGreen) ? instance.lockedAmount : (instance.minGreen + 10n);
+
+                    const feeTotal = (newLockedUntil - BigInt(lockTime)) * instance.pricePerBlock;
+                    const totalPay = feeTotal + 1n;
+                    const ownerPkh = instance.owner;
+
+                    instance.bindTxBuilder('updateAll', async (current, options) => {
+                        const tx = new bsv.Transaction();
+                        if (options.lockTime) tx.lockUntilBlockHeight(options.lockTime);
+                        tx['_feePerKb'] = 100;
+
+                        const utxo = options.fromUTXO || current.utxo;
+                        tx.addInput(new bsv.Transaction.Input({
+                            prevTxId: utxo.txId, outputIndex: utxo.outputIndex,
+                            script: bsv.Script.fromHex(utxo.script),
+                            output: new bsv.Transaction.Output({ satoshis: utxo.satoshis, script: bsv.Script.fromHex(utxo.script) })
+                        }));
+
+                        tx.addOutput(new bsv.Transaction.Output({ script: nextInstance.lockingScript, satoshis: current.utxo.satoshis }));
+                        tx.addOutput(new bsv.Transaction.Output({ script: bsv.Script.fromHex(Utils.buildPublicKeyHashScript(ownerPkh)), satoshis: Number(totalPay) }));
+                        if (options.changeAddress) tx.change(options.changeAddress);
+
+                        const ctx = tx;
+                        ctx.atInputIndex = 0;
+                        return { tx: ctx, atInputIndex: 0, nexts: [] };
+                    });
+
+                    const txResult = await instance.methods.updateAll(
+                        newPixels, newLockedUntil, nextInstance.lockedAmount,
+                        {
+                            lockTime: lockTime,
+                            changeAddress: await signer.getDefaultAddress(),
+                            next: { instance: nextInstance, balance: instance.utxo.satoshis, atOutputIndex: 0 }
+                        }
+                    );
+
+                    log(`Plot ${q} updated! TXID: ${txResult.tx.id}`);
+
+                    // Calculate network fee: Total Inputs - Total Outputs
+                    const totalInputSat = txResult.tx.inputs.reduce((sum, input) => sum + (input.output ? input.output.satoshis : 0), 0);
+                    const totalOutputSat = txResult.tx.outputs.reduce((sum, output) => sum + output.satoshis, 0);
+                    const networkFee = totalInputSat - totalOutputSat;
+                    totalFeesSpent += networkFee;
+
+                    log(`Plot ${q} fee: ${networkFee} sats.`);
+                    statusEl.innerHTML = `Success! Fee: ${networkFee} <a href="https://whatsonchain.com/tx/${txResult.tx.id}" target="_blank" style="color:#10b981; font-family:monospace; text-decoration:none">${txResult.tx.id.substring(0, 8)}...</a>`;
+                    statusEl.style.color = "#10b981";
+                    queueItem.style.color = "#fff";
+
+                    if (txResult.next) {
+                        contractInstances[q] = txResult.next.instance;
+                    } else if (txResult.nexts && txResult.nexts[0]) {
+                        contractInstances[q] = txResult.nexts[0].instance;
+                    } else {
+                        // Fallback: manually update UTXO for next round
+                        nextInstance.utxo = {
+                            txId: txResult.tx.id,
+                            outputIndex: 0,
+                            satoshis: instance.utxo.satoshis,
+                            script: nextInstance.lockingScript.toHex()
+                        };
+                        contractInstances[q] = nextInstance;
+                    }
+
+                    // Update our reference so we follow the new head next time from this session
+                    // Note: This only helps if we don't reload. 
+                    // To follow across reloads, we need the fetchLatestTxid logic.
+
+                    quadrantOriginal[q] = new Uint8Array(quadrantCurrent[q]);
+                    quadrantDirty[q] = false;
+
+                    log(`Waiting 5s for mempool/indexer sync...`);
+                    await new Promise(r => setTimeout(r, 5000));
+
+                } catch (e) {
+                    log(`Error updating plot ${q}: ${e.message}`, "error");
+                    statusEl.innerText = `Error: ${e.message.substring(0, 20)}...`;
+                    statusEl.style.color = "#ef4444";
+                    console.error(e);
+                }
+            }
+            log(`Queue processed. Total fees spent: ${totalFeesSpent} sats.`);
+            setTimeout(() => {
+                queueContainer.style.opacity = '0.5';
+            }, 1000);
+
+            checkDirty();
+            if (btn) btn.disabled = false;
+            setTimeout(refreshWalletDisplay, 2000);
+        }
+
+        function resetAll() {
+            for (let q = 0; q < 4; q++) {
+                quadrantCurrent[q] = new Uint8Array(quadrantOriginal[q]);
+                renderQuadrant(q, quadrantCurrent[q]);
+            }
+            checkDirty();
+        }
+
+        function hexToBytes(hex) {
+            const bytes = [];
+            for (let c = 0; c < hex.length; c += 2) bytes.push(parseInt(hex.substr(c, 2), 16));
+            return bytes;
+        }
+
+        function bytesToHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+    </script>
+</body>
+
+</html>

@@ -1474,16 +1474,35 @@
 
                         // Parse OP_RETURN comment
                         plot.lastComment = "";
-                        for (const out of tx.outputs) {
-                            if (out.script.isSafeDataOut()) {
-                                const data = out.script.chunks[1].buf?.toString('utf8') || "";
-                                if (data) {
+                        plot.lastOpReturn = "";
+
+                        if (tx.outputs) {
+                            for (const out of tx.outputs) {
+                                let isOpReturn = false;
+                                let data = "";
+
+                                // Method 1: safe data out
+                                if (out.script.isSafeDataOut && out.script.isSafeDataOut()) {
+                                    isOpReturn = true;
+                                    data = out.script.chunks[1].buf?.toString('utf8') || "";
+                                }
+                                // Method 2: check ASM
+                                else if (out.script.toASM().startsWith('OP_RETURN')) {
+                                    isOpReturn = true;
+                                    // Try to decode chunks
+                                    if (out.script.chunks && out.script.chunks.length > 1) {
+                                        data = out.script.chunks[1].buf?.toString('utf8') || "";
+                                    }
+                                    // Fallback: parse ASM? (LESS RELIABLE)
+                                }
+
+                                if (isOpReturn && data) {
                                     plot.lastOpReturn = data;
                                     if (data.includes('|')) {
                                         plot.lastComment = data.split('|')[1].trim();
                                     }
+                                    break; // Found the op return
                                 }
-                                break;
                             }
                         }
 

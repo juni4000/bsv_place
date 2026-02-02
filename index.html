@@ -1432,8 +1432,8 @@
                             throw new Error(`Invalid hex type: ${typeof hex}`);
                         }
 
-                        // Explicit fromHex call
-                        const tx = new bsv.Transaction().fromHex(cleanHex);
+                        console.log(`Plot ${plot.index}: Parsing hex ${cleanHex.substring(0, 20)}...`);
+                        const tx = new bsv.Transaction(cleanHex);
                         plot.instance = PixelPlot28.fromTx(tx, 0);
 
                         if (plot.instance) {

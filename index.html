@@ -1539,13 +1539,21 @@
                     body: JSON.stringify({ txids: cleanIds })
                 });
 
-                if (!resp.ok) return {};
+                addLog(`Hex Proxy Status: ${resp.status}`);
+                if (!resp.ok) {
+                    const err = await resp.text();
+                    console.error("Hex fetch error:", err);
+                    return {};
+                }
 
                 const data = await resp.json();
+                addLog(`Received ${data.length} hexes.`);
+
                 const map = {};
-                data.forEach(item => {
-                    if (item && item.txid && item.hex) {
-                        map[item.txid] = item.hex;
+                // Whatsonchain returns an array of hex strings in the same order as inputs
+                cleanIds.forEach((txid, idx) => {
+                    if (data[idx]) {
+                        map[txid] = data[idx];
                     }
                 });
                 return map;
@@ -1892,9 +1900,12 @@
 
         // --- Updated Decode ---
         function decodePlotState(plot, resetEdits = true) {
+            if (!plot.instance || !plot.instance.pixels) {
+                console.warn(`Plot ${plot.index} has no instance data.`);
+                return;
+            }
             const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
             let n = 0n;
-            // Parse big int... (same as before)
             for (let i = 0; i < rawHex.length; i += 2) {
                 const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
                 n |= (byte << (BigInt(i / 2) * 8n));

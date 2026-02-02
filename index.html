@@ -1241,7 +1241,7 @@
             drawGridOverlays();
             showRentedQuadrants();
 
-            // Phase 2: Extension (Plots 9-24)
+            // Phase 2: Remaining plots (Plots 9-99)
             const extensionPlots = plots.filter(p => p.index >= 9);
             if (extensionPlots.length > 0) {
                 addLog(`Phase 2: Syncing Extension (${extensionPlots.length} plots)...`);
@@ -1374,43 +1374,42 @@
             const cleanIds = [...new Set(txids.filter(id => id && id.length === 64))];
             if (cleanIds.length === 0) return {};
 
-            addLog(`Fetching ${cleanIds.length} HEXs (bulk)...`);
+            addLog(`Fetching ${cleanIds.length} HEXs (chunked)...`);
+            const map = {};
+            const chunkSize = 20;
+
             try {
-                const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
-                const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ txids: cleanIds })
-                });
+                for (let i = 0; i < cleanIds.length; i += chunkSize) {
+                    const chunk = cleanIds.slice(i, i + chunkSize);
+                    const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
+                    const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ txids: chunk })
+                    });
 
-                if (!resp.ok) return {};
-
-                const data = await resp.json();
-                addLog(`Received ${data.length} hexes.`);
-
-                const map = {};
-                cleanIds.forEach((txid, idx) => {
-                    const item = data[idx];
-                    if (item) {
-                        // WOC plural endpoint returns array of hex strings OR array of objects
-                        if (typeof item === 'string') {
-                            map[txid] = item;
-                        } else if (item.hex) {
-                            map[txid] = item.hex;
-                        } else if (item.txid && item.hex) {
-                            map[txid] = item.hex;
-                        } else {
-                            console.warn(`Unrecognized hex item for ${txid}:`, item);
-                            // If it has a .txid property matches our txid, try to find hex
-                            map[txid] = item.hex || item.tx_hex || item.toString();
-                        }
+                    if (!resp.ok) {
+                        console.error(`Chunk fetch failed: ${resp.status}`);
+                        continue;
                     }
-                });
-                return map;
+
+                    const data = await resp.json();
+                    chunk.forEach((txid, idx) => {
+                        const item = data[idx];
+                        if (item) {
+                            if (typeof item === 'string') {
+                                map[txid] = item;
+                            } else if (item.hex) {
+                                map[txid] = item.hex;
+                            }
+                        }
+                    });
+                }
+                addLog(`Received ${Object.keys(map).length} hexes total.`);
             } catch (e) {
-                console.error("Hex fetch error:", e);
-                return {};
+                console.error("Bulk fetch failed:", e);
             }
+            return map;
         }
 
 
@@ -1450,9 +1449,9 @@
             }
 
             // 2. Draw Quadrant Subdivisions (2x2 within each plot - every 14 pixels)
-            // 7 plots * 2 quadrants = 14 quadrants per row/col.
+            // 10 plots * 2 quadrants = 20 quadrants per row/col.
             // But we can just iterate every 14 pixels * pixelSize
-            // Total grid size 196 pixels. 196/14 = 14.
+            // Total grid size 280 pixels. 280/14 = 20.
             // So lines at 14, 42, 70, 98, 126, 154, 182
             const quadLines = [];
             for (let i = 1; i < 20; i++) quadLines.push(i * 14);
@@ -1676,8 +1675,8 @@
 
         function getQuadrantRect(plot, qIdx) {
             const gridIdx = plots.indexOf(plot);
-            const plotRow = Math.floor(gridIdx / 7);
-            const plotCol = gridIdx % 7;
+            const plotRow = Math.floor(gridIdx / 10);
+            const plotCol = gridIdx % 10;
             const qRow = Math.floor(qIdx / 2);
             const qCol = qIdx % 2;
 
@@ -1697,8 +1696,8 @@
                 const hex = COLORS[selectedColor];
                 ctx.fillStyle = hex;
                 // x, y index
-                const y = Math.floor(globalIdx / 196);
-                const x = globalIdx % 196;
+                const y = Math.floor(globalIdx / 280);
+                const x = globalIdx % 280;
                 ctx.fillRect(x, y, 1, 1);
             }
 
@@ -1903,8 +1902,8 @@
 
         function zoomToPlot(plotIdx) {
             const plot = plots[plotIdx];
-            const plotRow = Math.floor(plotIdx / 7);
-            const plotCol = plotIdx % 7;
+            const plotRow = Math.floor(plotIdx / 10);
+            const plotCol = plotIdx % 10;
 
             const viewport = document.querySelector('.viewport');
             const vRect = viewport.getBoundingClientRect();
@@ -1950,8 +1949,8 @@
             if (ctx) {
                 const hex = COLORS[selectedColor];
                 ctx.fillStyle = hex;
-                const y = Math.floor(globalIdx / 196);
-                const x = globalIdx % 196;
+                const y = Math.floor(globalIdx / 280);
+                const x = globalIdx % 280;
                 ctx.fillRect(x, y, 1, 1);
             }
 
@@ -2036,10 +2035,10 @@
             const canvas = document.getElementById('grid-canvas');
             if (canvas) {
                 const cRect = canvas.getBoundingClientRect();
-                const y = Math.floor(nearGlobalIdx / 196);
-                const x = nearGlobalIdx % 196;
-                const pixelW = cRect.width / 196;
-                const pixelH = cRect.height / 196;
+                const y = Math.floor(nearGlobalIdx / 280);
+                const x = nearGlobalIdx % 280;
+                const pixelW = cRect.width / 280;
+                const pixelH = cRect.height / 280;
                 const screenX = cRect.left + x * pixelW;
                 const screenY = cRect.top + y * pixelH;
 
@@ -2886,6 +2885,7 @@ ${quadGrid}
         }
 
         function getGlobalIdxFromLocal(plot, localIdx) {
+            const gridIdx = plots.indexOf(plot);
             const plotRow = Math.floor(gridIdx / 10);
             const plotCol = gridIdx % 10;
 

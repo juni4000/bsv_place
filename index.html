@@ -1434,10 +1434,23 @@
                     const hex = txDataMap[plot.headId];
                     if (hex) {
                         try {
+                            if (typeof hex !== 'string' || hex.length < 100) {
+                                throw new Error(`Invalid hex string: ${typeof hex === 'string' ? hex.substring(0, 50) : typeof hex}`);
+                            }
+                            // Using the bsv constructor directly on hex string. 
+                            // If it fails with 'forEach' of undefined, it might mean the scrypt-ts transaction parser is confused.
                             const tx = new bsv.Transaction(hex);
                             plot.instance = PixelPlot28.fromTx(tx, 0);
-                            decodePlotState(plot, false);
-                        } catch (e) { console.error(`Failed to parse plot ${plot.index}`, e); }
+
+                            if (plot.instance) {
+                                decodePlotState(plot, false);
+                            } else {
+                                throw new Error("instance is null after fromTx");
+                            }
+                        } catch (e) {
+                            console.error(`Failed to parse plot ${plot.index} for txid ${plot.headId}:`, e);
+                            addLog(`Plot ${plot.index} parse error: ${e.message}`, "error");
+                        }
                     }
                 }
 
@@ -1640,36 +1653,7 @@
             }
         }
 
-        function decodePlotState(plot, resetEdits = true) {
-            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
-            let n = 0n;
-            for (let i = 0; i < rawHex.length; i += 2) {
-                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
-                n |= (byte << (BigInt(i / 2) * 8n));
-            }
 
-            // Batch DOM updates for better performance
-            requestAnimationFrame(() => {
-                for (let i = 0; i < 784; i++) {
-                    const color = Number((n >> (BigInt(i) * 5n)) & 31n);
-                    plot.originalPixels[i] = color;
-
-                    const globalIdx = getGlobalIdxFromLocal(plot, i);
-                    if (resetEdits || !plot.modifiedIndices.has(i)) {
-                        currentPixels[globalIdx] = color;
-                        const el = document.getElementById(`p${globalIdx}`);
-                        if (el) {
-                            el.style.backgroundColor = COLORS[color];
-                            el.classList.add('is-filled');
-                        }
-                    }
-                }
-                if (resetEdits) {
-                    plot.modifiedIndices.clear();
-                }
-                updateQueueUI();
-            });
-        }
 
         function initPalette() {
             const container = document.getElementById('palette');

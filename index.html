@@ -1904,10 +1904,19 @@
                 console.warn(`Plot ${plot.index} has no instance data.`);
                 return;
             }
-            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
+            // Use .pixels directly if it's already a string, or toHex if it's a ByteString object
+            const pixelsVal = typeof plot.instance.pixels === 'string' ? plot.instance.pixels :
+                (plot.instance.pixels.toHex ? plot.instance.pixels.toHex() : plot.instance.pixels.toString());
+
+            const rawHex = pixelsVal.startsWith('0x') ? pixelsVal.slice(2) : pixelsVal;
+
+            if (rawHex.length < 980) {
+                console.warn(`Plot ${plot.index} pixels data too short: ${rawHex.length} chars`);
+            }
+
             let n = 0n;
             for (let i = 0; i < rawHex.length; i += 2) {
-                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16) || 0);
                 n |= (byte << (BigInt(i / 2) * 8n));
             }
 

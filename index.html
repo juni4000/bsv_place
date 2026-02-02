@@ -1506,6 +1506,21 @@
                             }
                         }
 
+                        // Immediate Cache Sync for Rentals (Fresh Load Support)
+                        if (plot.instance && plot.instance.rentEnds) {
+                            for (let q = 0; q < 4; q++) {
+                                const exp = Number(plot.instance.rentEnds[q]);
+                                if (exp > 0 && plot.lastOpReturn && plot.lastOpReturn.startsWith(`RENT_Q${q}_`)) {
+                                    const cacheKey = `rent_comment_${plot.index}_${q}_${exp}`;
+                                    const comment = plot.lastComment || "";
+                                    if (comment) {
+                                        localStorage.setItem(cacheKey, comment);
+                                        console.log(`Cached comment for Plot ${plot.index} Q${q}: ${comment}`);
+                                    }
+                                }
+                            }
+                        }
+
                         if (plot.instance) {
                             decodePlotState(plot, false);
                         } else {

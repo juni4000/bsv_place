@@ -1,0 +1,28 @@
+{
+    "version": 2,
+    "name": "bsv-place",
+    "builds": [
+        {
+            "src": "api/**/*.js",
+            "use": "@vercel/node"
+        },
+        {
+            "src": "index.html",
+            "use": "@vercel/static"
+        },
+        {
+            "src": "scrypt_bundle.js",
+            "use": "@vercel/static"
+        }
+    ],
+    "rewrites": [
+        {
+            "source": "/api/proxy",
+            "destination": "/api/proxy.js"
+        },
+        {
+            "source": "/api/ping",
+            "destination": "/api/ping.js"
+        }
+    ]
+}

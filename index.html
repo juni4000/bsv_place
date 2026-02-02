@@ -21,7 +21,7 @@
             --text-dim: #94a3b8;
             --pixel-size: 5px;
             --border-color: #1e293b;
-            --grid-size: 196;
+            --grid-size: 280;
         }
 
         * {
@@ -1044,7 +1044,7 @@
 
         // --- STATE ---
         let plots = []; // 9 plot objects: { index, genesisId, headId, instance, originalPixels, modifiedIndices, queuedRents }
-        let currentPixels = new Uint8Array(196 * 196).fill(0);
+        let currentPixels = new Uint8Array(280 * 280).fill(0);
         let selectedColor = 0;
         let isDrawing = false;
         let currentMode = 'paint'; // 'paint', 'rent', or 'history'
@@ -1111,13 +1111,8 @@
         }
 
         function initPlotsMetadata() {
-            // 7x7 Grid with BSVAL Graffiti Image (49 plots)
-            // Shared init_id: BSVAL_GRAFFITI_3X3 (Legacy ID kept)
-            // Row 0: 0, 1, 2, 9, 16
-            // Row 1: 3, 4, 5, 10, 17
-            // Row 2: 6, 7, 8, 11, 18
-            // Row 3: 12, 13, 14, 15, 19
-            // Row 4: 20, 21, 22, 23, 24
+            // 10x10 Grid Expansion (100 plots)
+            // Pattern follows ring-expansion visual layout
             const meta = [
                 { "index": 0, "owner": "1P4W5w2bL6wEmjrJfgUy37naivcXQduqNq", "txid": "8b4dc8af57b2974a413ec6fe99ff8a3e5ea34ca7045c39af5aac84e8fc340a40" },
                 { "index": 1, "owner": "17FK3tdKqa5vD2VLFw9gECasDSVfPKKzgM", "txid": "a98637337a29306b9bf431586562898c6c09f5d1882615ddf45d46449f11ea5e" },
@@ -1126,6 +1121,9 @@
                 { "index": 16, "owner": "1CTrUetoWrEGXLSzCcL3CXwU7gF7g2PWE4", "txid": "13eb0148af862427c9414b89897587d3b85f4ae34c422c87a6a7bb9a6fe3f45a" },
                 { "index": 25, "owner": "1LR1SG389pvW2cdeyX5tZcRn6ZeQEQD7KH", "txid": "cc72867dea2918cd4ddfc2bb9904151b55e5934a76439519dea1df3599dc05e7" },
                 { "index": 36, "owner": "1QAVYFVFyMrjdzinNdT5NcQBnejisiXDDV", "txid": "83676b887d9d5e9042c1e43a2fc1cf1656b34a722996300cde16a3a57b7621d1" },
+                { "index": 49, "owner": "1Cc8QLojghsCB99XRjtFdTDqQVUarutZos", "txid": "d6e5c2155d5d9742a7a18d135477d04a4e26d88da259f0a3162d640d5a5ae8ed" },
+                { "index": 64, "owner": "1UTNcM25jccZijzX4fXBEC38d7m8M3vbi", "txid": "35a7be457d5ba9dea36f3b6d9efa10f0e0aa1c19ebafbc504f9b6fde5f6c9167" },
+                { "index": 81, "owner": "1KDxKxc8CfbC5dWpoEWaBdMoMdpXrrggbB", "txid": "50ee2a74368b7a10895c817b3b0d31cc13f283798248b87a0c0b37d56bbb8b30" },
                 { "index": 3, "owner": "1PGNR2KMikwwN9m1rvNAgZBCBrZUr5eHbJ", "txid": "a93cb7d27575edde0fd5594669e23c0c526a4843e7b979fa4c7a64462e5cd2ad" },
                 { "index": 4, "owner": "15pRFCaqTZZS1atfxyeJ9AAPK3fVYbuAAV", "txid": "269aabf8975efbaa7fbd5179c931b193ce147aa2a24bb6f9b95cc51a54258a23" },
                 { "index": 5, "owner": "1Ab9TYd3ht1vXQMb3v64FY3iAkpowr7hJJ", "txid": "90c1f206a79cb760c35eee1478c5498c16881752e2aba6a5a73122bd54cc78a1" },
@@ -1133,6 +1131,9 @@
                 { "index": 17, "owner": "17VYrhG27V2tMB3Jv9rmMHoDaV32BNmtre", "txid": "7794ffe1f5af636119c9cd12eb84d29561b4330d2a1ab212bb03d2a9a5965fc3" },
                 { "index": 26, "owner": "173Q8MrfKG2SpSYLPSmwE8bx4zsPYaNE1z", "txid": "23b9f9050bba6cf726b4078a60e982b84279d30b7baaf574603aeda1ac2e1fd8" },
                 { "index": 37, "owner": "1EDfN4gdL5Q9AgFXLCcgRBsBDf37he8Rm2", "txid": "7269446f6d7edbc9cc60e66c668e5ea3b6d34a9e9f4c6921515658a06dfa893b" },
+                { "index": 50, "owner": "13Zb5Rxt7sGLiqUTM3KDs9vXMaJcy3CmC1", "txid": "799440c20f411056da45f16a4923b6febc313ab5c352b28b4c7e8d94d60f572e" },
+                { "index": 65, "owner": "1DRZvHeS1y2AatqmExLc4r1m79PH2dWL1y", "txid": "65c0d5da648185cd4565c0ebe23241106473baead3e862348a84ccc017282ba3" },
+                { "index": 82, "owner": "17ETMvdKRMGEVzWpEkWzRkt9DMU8nGHTBN", "txid": "e18cb6d4c45cb30958f183c641696847cc8bf2602998c07a964564003993f9eb" },
                 { "index": 6, "owner": "1GQX8HfxPRREEbCjy3Vbp57CyfhHdo3Yes", "txid": "423075e2f3e3cdb2a641c15f37fe67302a647d24f51bba5c0bd4d5cbf77541bf" },
                 { "index": 7, "owner": "13gqJQv6srBua5MAKwVK6jLRKqnQivQpju", "txid": "a246929ce2377e5400f4afc86e455ab2adf8b6cc3e1782395c76a4619471ed65" },
                 { "index": 8, "owner": "16p13WZgWGqENoFvoaQ1kexT2ZEXBYfw3b", "txid": "2b030ed8604f99ac247983c24c3555d810126262c4a04493c03573bad84251f5" },
@@ -1140,6 +1141,9 @@
                 { "index": 18, "owner": "1J5m332nTUE1L1qHh6SLJyAzyRorcDAJsi", "txid": "390192516dbda540a856f4242303a8fd9131bee3a4b92088dabb2f1122f02d32" },
                 { "index": 27, "owner": "1BH8cDuc6LLgkndxoTgnV1P6VHsnLMj123", "txid": "9e25e3e74428c10522c91b329c7694fe05f6478fb5735a48413172fa4442e0cb" },
                 { "index": 38, "owner": "1MHnZFU1SaJ1pgHFZCQAMM3BQqZSm8EnzR", "txid": "a7cc04987982a2c11983efc41f40c5e7b626f9ba29576e41a713e03e57dd54b5" },
+                { "index": 51, "owner": "1HdG4JvVjfcmEerWASgYFa3SQGnEAG7Npu", "txid": "f31bd60d41a1214e14313d9e9ee2cc5f397208c3dd39b986f35ff71bb55b23b1" },
+                { "index": 66, "owner": "1MKiGCtkgW54yKo57uHReUD3eQxmnH3S9M", "txid": "c62f59e5e64f436860864c5a5af1c0cf7cd3c296b9bbabdfb7a4907895a65ab2" },
+                { "index": 83, "owner": "1A3Z2w8KvDPMEvh87kVokMRSDpacus4ZmP", "txid": "d7367b902fe4133fa8e07fa3b0b371d68a07721647b7deae1dc6957e523c985d" },
                 { "index": 12, "owner": "121CH8s6r7xbS6SmPfbYY1M6k6HLxTP5D3", "txid": "459cc2e203f9e5d2220f922d01f59ed74a24d773430ceeb3da1d0f71999972ff" },
                 { "index": 13, "owner": "19MB7X2DdWhuf8mYvi1QXPocdkivi726qX", "txid": "37d01fbe06f4c11448c6237afafeb34cd47a014a5ba56b7ddb4261789f840fa6" },
                 { "index": 14, "owner": "1GqKQvHq7Yd127ZHZoQqod2hZsF8iDFneW", "txid": "f2664c289e5683876093fca4086e613d26e08a1354e9b472f7a355d2b54b7320" },
@@ -1147,6 +1151,9 @@
                 { "index": 19, "owner": "13LrNQNfYo14i6w4wHJpq97VjEcm12Uuix", "txid": "23d777898c4be1b48b3af119f9517d0bd9efc4f5164c1979b416140414d5ab69" },
                 { "index": 28, "owner": "17BU6J2bQUtf98nj3YP4L43aFhjCPAixDS", "txid": "72dd9af34257bbe9538fef3de169b387c3df87dc6c7d5c81ad2c6c7d67bc6217" },
                 { "index": 39, "owner": "1H94vK88GPFEQ1kXN3zgkdM2sh5dxbUgAc", "txid": "5c3e2ec54837aa4f3c675ea95ecc8868abe341ecd30cde89ac6eae3880d29356" },
+                { "index": 52, "owner": "1GBRAtCTNWfMkWQi969sNXTkiQN9S8S9gA", "txid": "eabd5967d5881719c2f022da36b86944e8348b785c0277a7d3c87b07479916b6" },
+                { "index": 67, "owner": "19SCehgeuwbaaTDkWmkt3Qu6BhroeLfoKM", "txid": "5b67bc042441b862befc52b8ced3ede1b4035526a04db3880707cfbe2bcf597d" },
+                { "index": 84, "owner": "13cRbBQ3SVj12pMsk1AE6jEp6kwCaoj1FW", "txid": "0ff185a3f554c110679fa76d924a650c93a707b0182d0996cfbc5fb3568ade37" },
                 { "index": 20, "owner": "1PJ2UJkiWrP3KtEQi8TrGtaZquipDAGF4Q", "txid": "76b73f9f11b0809358919756296a2fde01c01c3d5bd6fa2518a9e49f5bb949c8" },
                 { "index": 21, "owner": "1CRUGtrHJ1jugxy5kG6V1Bv7YgowXHSRru", "txid": "7fa27c8a3c9fc57940b8f13d3edde5e0c9cf0806cad92dbc76b1def6075dc1a3" },
                 { "index": 22, "owner": "1KjNE68uihpR2efpL2MiezaCykcctQGjr6", "txid": "e3e446d3b087758a75556af1d6d112fad96eeb231204b158b0d2105146669942" },
@@ -1154,6 +1161,9 @@
                 { "index": 24, "owner": "1M1DDEbvcJCnmvLUVqSENWX7qTsVCAxrpc", "txid": "370d02c32ee97ba0969ed3b4ffe86c630780fd9ff35f5cb1dd72a3e99d03313f" },
                 { "index": 29, "owner": "1KdhFc8fy73gCJEg6gnKaB6EEvr3Y5EYUt", "txid": "bf8f0d3d0e86fab3f390991c988adc87fcadcb4e0419df3c42d17a661deed092" },
                 { "index": 40, "owner": "1Bo4cGSVfR1bL2ouz37AC2ktGri1wC6XZq", "txid": "94c836af70190b699ecb18cf259f1d35f18d998d551e22610a356255f309e38c" },
+                { "index": 53, "owner": "1A6b7KHVLAFZTiaQXzNgBuSukg1TVEkBVe", "txid": "14fe261bc57d7146a00ec11a82e98c20e0998b4e8b7b8ffdf87db10dcffedb20" },
+                { "index": 68, "owner": "1BcTViq9fDZ3NuFs5ahybk6PV8x2WD8STq", "txid": "92dafc70923bffb0e8a877d41a75ec1e4c9f0c5c834db6403ceec334fd6423a2" },
+                { "index": 85, "owner": "158XKQ1KPNgHVNtENBRJq5YuNhzu7XEmyP", "txid": "771506e703e985720904298a96c03a065c731cc703d5d0689d677187427053ea" },
                 { "index": 30, "owner": "1M7Pr2eMNUZxTS4PUHCzfiJaUBt1wmC4x7", "txid": "d71393d6f28cbde94042ce0444f38c78075adb67980c5ff706fbd2c87b0c398b" },
                 { "index": 31, "owner": "1AWbrPfUzkZ47j1HjcoQBiMtiJCXM3m3bT", "txid": "7f6e1620c349f292b0cfbdc05b715b7191b1aadaa63dc71c12871f91dab26daf" },
                 { "index": 32, "owner": "1FjJdKdn1jS7PYdn7uZf1UKp6zp1oYU2bG", "txid": "9228a475e2d9f15a4d7a6df837500372e16c2c16014923163b47146bb5e13cb8" },
@@ -1161,14 +1171,51 @@
                 { "index": 34, "owner": "1LxCnT7jg6eFE7SX9nBaNvTvmjDYeBWvp1", "txid": "1f554e896f8ab2550adecb155b39d010781fe90c1d78db08d00315f8eff22fd6" },
                 { "index": 35, "owner": "168nPQmMDXHF4SKyEsrkyLsLiLspYFUB2c", "txid": "6906e7146502b74529d480492e4c6ae5043325b8db81922a6332f9c3130aea9c" },
                 { "index": 41, "owner": "1PgG2sJPuZbB7dngMyJNfa7xvcjEHytRuf", "txid": "70cb53d58f7e2f30eef7baa750c611d648e6e91e17275c9b5f8152b1ae544955" },
+                { "index": 54, "owner": "1DdfS4bGU2ciBAHA3mMnGGB1deAUxYgQkE", "txid": "95e85570156451bd13bd59f9e6b88d160a330394fe64730413c9d791d28d689c" },
+                { "index": 69, "owner": "17chksZaUEvNUtMCMzFfyr5VhTJKb9XmY7", "txid": "b40307c2a717c63235975d48b2884ec94628f9e798812426fc3a23940d23cf06" },
+                { "index": 86, "owner": "1cf2297m8f3wW5nCemiJNCUeEaMS27EBh", "txid": "d063f60c1877e9868c89e780e8780da95e3a807886aa5a70713e585030d2c0d3" },
                 { "index": 42, "owner": "19j8sJASHckHjSp9Y6kDJFrYYo4S6qGN25", "txid": "92ae1e1d43731cad802eac2f7feb143a03352027133fc4b9162f4e3256791ccd" },
                 { "index": 43, "owner": "1P1RkyvvZL4DzBzHsF6cBqAQPs9xsyBDxc", "txid": "2dbbd2f4ccfd7651ae10528266dd9f10b0adac2e8bed88eae37eeb6265a9d3df" },
                 { "index": 44, "owner": "1J1Ph1MTpqv1ePA11Y94cuje7xtb11FsXN", "txid": "05417a4b11133101b1813ffc165cb2b5bd6080fd7d0c57f2224e5ab1a49858d5" },
                 { "index": 45, "owner": "12Qr6dpJf9kHYFHaxGkjWCyqVCZTeuaH6k", "txid": "6f73f5f7a8d677d45ded898874db2cecaf9825aaea52c0c3393cfbf5526773fa" },
                 { "index": 46, "owner": "1GJzCN2zbQ9ff5BuEsoYRHZA1Nkh2EzbdL", "txid": "672aa3e340fdf93972554fc8c074d9d1a079da301cdd506ffa73401970a7e477" },
                 { "index": 47, "owner": "1HyALrfXKx5f1Z3329W1DCPWNKGEYLP81f", "txid": "0030af45022d3ca434229a9e823adcccdef4c2e36a3f0943d3a2082a7680d4b4" },
-                { "index": 48, "owner": "16f1arM1pHLeRqDzYzmLhdDkGsa6y6V8Az", "txid": "bd3ee53f2fccba4ce535489f13b2b18755a94d783de9612ed58e70691272fc12" }
+                { "index": 48, "owner": "16f1arM1pHLeRqDzYzmLhdDkGsa6y6V8Az", "txid": "bd3ee53f2fccba4ce535489f13b2b18755a94d783de9612ed58e70691272fc12" },
+                { "index": 55, "owner": "14Xosjbj2aWzSe2WewZFwqL8yTDwTwKoVK", "txid": "10aca55ad2b614fc63e869f7b960215482c0e7db1cb0266a29ca43189e54b10d" },
+                { "index": 70, "owner": "13EA3ZsXAvLm1iVWSNdieJvHqsxPm6yLVF", "txid": "491a0f7d023aeb946158885b50747c0256af496de9a8f02c3cc84fe31653b7f4" },
+                { "index": 87, "owner": "12M1LdKNW3xRqCEppq5ocXRM4faQY7dp3F", "txid": "cd9f042b4b89bb0654d9a91f5695e51bbe6363cb746a29790642f0d4fa131ed6" },
+                { "index": 56, "owner": "1AqpYMgqha8tBGXR97oqmE9SeHQ2KJd5eu", "txid": "40aa05026553aa59147cc2a43f2b466382bb5920f4cd7f3b5ba858fd3d689037" },
+                { "index": 57, "owner": "19zDpKryAQKpSF2ecDSE5jWNNB6emyMmKY", "txid": "50cd547f46db42bda1196950375353d04a5a37afda3ca119906744cf466aeaa3" },
+                { "index": 58, "owner": "1frDbfmrXe3RH34ZZtMdtnbFFMoMLQHKT", "txid": "2089266cbadba71f0c6e11be1dc1365613207fcebc23fb9eae7240b715159866" },
+                { "index": 59, "owner": "1542h4odfsx3Z3FATUprff9kg3DUWRY6JG", "txid": "a98f4664af6502bf0c7886de160417c720fa94ca9b6b214a87541bd888bd2cbc" },
+                { "index": 60, "owner": "1FrrMoJTuQMWGLMDX2XjXVm2mY8J6qr6xZ", "txid": "1204aff489248eb86bda99fa33ed24dd995ec27c4eb06931ca84896489be3608" },
+                { "index": 61, "owner": "1HVakAyexqzpQiHiv61WW4A6BTcr95GoAk", "txid": "13dad978854b4d321f6f236ab942cbecc54ba31492ecd36580efdd19459afacf" },
+                { "index": 62, "owner": "13DGmsrna6NQnU3afcFqdD6pjALixsBuGL", "txid": "65ea633052753d68225ed2d2fe5bc1714303b4989acde07107d8ded48b9dec31" },
+                { "index": 63, "owner": "1FzRBK5KVWYRCJeRS1BBFpMDo7oDPS73uW", "txid": "740004efd42dda9f29550307c7b5fcf6e11099f19d9ee2e79037a731c0850887" },
+                { "index": 71, "owner": "19h3oqUoaiYHhZ49PiTLiiWc17pqG3B3po", "txid": "9c116726c6a8a1614725a745b9f53e7df8b71a51f298815e344fa3dfa0bb9fd5" },
+                { "index": 88, "owner": "13uvff2k2ZffHUpwmNTSB2jDaJv4zdXwyU", "txid": "92e12c7fa589b17baa5909d1a53f280f186611d9622031be61ea24104c4f984a" },
+                { "index": 72, "owner": "1NaCmcvYcbEqn3zC6dS5G6fjU234zJpiXQ", "txid": "23b1cf331a23284633b9917266f2d6ed0ff9f61fd3462281e34280eb1b16a1ad" },
+                { "index": 73, "owner": "19aiWc8MZpPXuMqj3P2NERr92H5sNQSc37", "txid": "72034dbc89b9ed2cc95d0ef2325ff75730588e033fa47a9282557ff6dd79e69e" },
+                { "index": 74, "owner": "1GLJveLaeRGamegp9dNYWYFaVsdCrshF1", "txid": "ad68d1beda9d17516b5b39d6b72b032be17c73b07d7ee62d97943f8955423966" },
+                { "index": 75, "owner": "13jfkpoSdJhDPsrdKE5Ked2hfrk2QKGk3s", "txid": "81e2cf060da88b0e6ea6d18a6a5ae0040624db3cfab99f7e0ad34570e7c5cdd5" },
+                { "index": 76, "owner": "12LN5thjQzhJ557t7iYuEo72JLbwFGn7Xj", "txid": "52f2fa320e11decac377b5a1da2785cd8aec0ee965e1f506e9df4a55909befe0" },
+                { "index": 77, "owner": "12mDjxo3eNq9R6fBQjBgFaVMRMaTCkupF6", "txid": "f8835bbbb72f03bbae7e8490da6ce71ecc9063863f265dc6ddbd4b7db5d01db0" },
+                { "index": 78, "owner": "12gYMmfCQUfMeLdU4P9NwUid5hJTpgadVD", "txid": "68c17361a3ca98b00316ae8d04f965f6fb31c0a88637210d3c96b78e97af64ca" },
+                { "index": 79, "owner": "1JtSNa67cjALeLUdMkXTtBxBsfWRWXKLEv", "txid": "bc4a015cbc460367b310e3223f8294b600c01633770ed613c9698be7a46631c3" },
+                { "index": 80, "owner": "1Kmmpo7weiSCiR2qA9q7eEg8kTuRngz9iT", "txid": "b12a93e649c449e3787ef8b43e0233196bd833b821faa4aeaa307810b09dca7b" },
+                { "index": 89, "owner": "1Lv9RoD1DDxKwTDsSBR9UWrm7eno6BLqiN", "txid": "b0f262b53c70a8b8003fb08d9c9bd4bb471f008a01f87203a28659094e0c3480" },
+                { "index": 90, "owner": "17ZArK7x9sPDXimFfo7gTS3hM6HqkD8NAt", "txid": "20787d2da1eac97a542cdeb9e9c5ff16e713d2d30901c05fb5846e6e77d9674f" },
+                { "index": 91, "owner": "1MBwECdiYBrg8R5QHSMmHrjzZDaxJarhBm", "txid": "91d79bb38e7d9a7a88e0c048ab3bb6d2d1d5d586627f2ab67ce910efbc12d027" },
+                { "index": 92, "owner": "12phLoTu4qFoWZXmC689U9Kq7bJHuiSYxG", "txid": "79409120e3818a08da1b6a88164caae080b7529b83f08ded4c77d54d05821a61" },
+                { "index": 93, "owner": "14pePBmcbCmQdZNTZwThTQdfRV4ETdvbmB", "txid": "e8451835e12213bcd9904b2a0d0ca04af11daeff73e19c68dfb79d09ef5c3cb0" },
+                { "index": 94, "owner": "16USU3qqQGugAWJi4KZ9a42fSEZ2NqQLhk", "txid": "f6a1f5aa2ebe555b456e1515b467e0b53c06b520ed51367d4a2aa87e169d5e3c" },
+                { "index": 95, "owner": "1LgbaF9h6jt47STCa9vtqFmHJvpk6C8BZT", "txid": "a110385bf4915a700dbb0c3999849aed89c90b94aaaeaf707190fc40ed587c0c" },
+                { "index": 96, "owner": "1KenuAL2rSXeTMQ4N2u26sK9ZiRiDe3rMT", "txid": "937bf0a4446887e17709c22dc6fa182576e1a011d3f6a8621b8d3731dfb3e6e6" },
+                { "index": 97, "owner": "14peLXTHZQeF2h9CnonyHv9d2hnLgWGsKa", "txid": "0a51ed6434b757627f66d381c9de0c83c1005919d8e2b2d1e57ff9357e453d5b" },
+                { "index": 98, "owner": "1N6uDcVzYgRydf5tJERFQcV8Kn79hfW6tU", "txid": "91697cad9785c8f3412161c9e175c76806095e37bfe3d453295fba24d331ffb7" },
+                { "index": 99, "owner": "1N7AWenHDXrAu7VK8hZ2AABoh31WLGJFCF", "txid": "f09b088f42fc36469ac2f2540fbf9f60c0e7296c7804cd70fd92a560414717f0" },
             ];
+
             plots = meta.map(m => ({
                 index: m.index,
                 owner: m.owner,
@@ -1386,7 +1433,7 @@
             const pixelSize = 5;
 
             // 1. Draw Plot Boundaries (7x7 grid - every 28 pixels)
-            for (let i = 1; i < 7; i++) {
+            for (let i = 1; i < 10; i++) {
                 const pos = i * 28 * pixelSize;
 
                 // Horizontal Plot Line
@@ -1407,7 +1454,8 @@
             // But we can just iterate every 14 pixels * pixelSize
             // Total grid size 196 pixels. 196/14 = 14.
             // So lines at 14, 42, 70, 98, 126, 154, 182
-            const quadLines = [14, 42, 70, 98, 126, 154, 182];
+            const quadLines = [];
+            for (let i = 1; i < 20; i++) quadLines.push(i * 14);
             quadLines.forEach(p => {
                 const pos = p * pixelSize;
                 // Horizontal Quadrant Line
@@ -1467,11 +1515,11 @@
 
             const canvas = document.createElement('canvas');
             canvas.id = 'grid-canvas';
-            canvas.width = 196;
-            canvas.height = 196;
+            canvas.width = 280;
+            canvas.height = 280;
             // Scale up with CSS to match pixel-size (5px per pixel)
-            canvas.style.width = (196 * 5) + 'px';
-            canvas.style.height = (196 * 5) + 'px';
+            canvas.style.width = (280 * 5) + 'px';
+            canvas.style.height = (280 * 5) + 'px';
             canvas.style.imageRendering = 'pixelated'; // Crisp pixels
 
             container.appendChild(canvas);
@@ -1479,7 +1527,7 @@
 
             // Initialize white background
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, 196, 196);
+            ctx.fillRect(0, 0, 280, 280);
 
             // Interaction Overlay (for events) or bind directly to canvas?
             // Binding to container/viewport catches events, but mapping needs to be precise.
@@ -1496,11 +1544,11 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            const pixelX = Math.floor(x / (rect.width / 196));
-            const pixelY = Math.floor(y / (rect.height / 196));
+            const pixelX = Math.floor(x / (rect.width / 280));
+            const pixelY = Math.floor(y / (rect.height / 280));
 
-            if (pixelX < 0 || pixelX >= 196 || pixelY < 0 || pixelY >= 196) return -1;
-            return pixelY * 196 + pixelX;
+            if (pixelX < 0 || pixelX >= 280 || pixelY < 0 || pixelY >= 280) return -1;
+            return pixelY * 280 + pixelX;
         }
 
         // --- Replacing Interaction Handlers ---
@@ -1537,11 +1585,11 @@
 
         function redrawGrid() {
             if (!ctx) return;
-            const imageData = ctx.createImageData(196, 196);
+            const imageData = ctx.createImageData(280, 280);
             const data = imageData.data;
 
             // Fill imageData from currentPixels
-            for (let i = 0; i < 196 * 196; i++) {
+            for (let i = 0; i < 280 * 280; i++) {
                 const colorIdx = currentPixels[i];
                 const hex = COLORS[colorIdx] || '#FFFFFF';
                 // Convert hex to rgb
@@ -1655,11 +1703,11 @@
             }
 
             // Logic
-            const y = Math.floor(globalIdx / 196);
-            const x = globalIdx % 196;
+            const y = Math.floor(globalIdx / 280);
+            const x = globalIdx % 280;
             const plotRow = Math.floor(y / 28);
             const plotCol = Math.floor(x / 28);
-            const plotIdx = plotRow * 7 + plotCol;
+            const plotIdx = plotRow * 10 + plotCol;
             const plot = plots[plotIdx];
 
             const localY = y % 28;
@@ -1712,11 +1760,11 @@
         }
 
         function updateHoverInfo(globalIdx) {
-            const y = Math.floor(globalIdx / 196);
-            const x = globalIdx % 196;
+            const y = Math.floor(globalIdx / 280);
+            const x = globalIdx % 280;
             const plotRow = Math.floor(y / 28);
             const plotCol = Math.floor(x / 28);
-            const plotIdx = plotRow * 7 + plotCol;
+            const plotIdx = plotRow * 10 + plotCol;
 
             const localY = y % 28;
             const localX = x % 28;
@@ -1908,11 +1956,11 @@
             }
 
             // 2. Logic & State
-            const y = Math.floor(globalIdx / 196);
-            const x = globalIdx % 196;
+            const y = Math.floor(globalIdx / 280);
+            const x = globalIdx % 280;
             const plotRow = Math.floor(y / 28);
             const plotCol = Math.floor(x / 28);
-            const plotIdx = plotRow * 7 + plotCol;
+            const plotIdx = plotRow * 10 + plotCol;
             const plot = plots[plotIdx];
 
             const localY = y % 28;
@@ -1929,11 +1977,11 @@
         }
 
         function handleRentClick(globalIdx) {
-            const y = Math.floor(globalIdx / 196);
-            const x = globalIdx % 196;
+            const y = Math.floor(globalIdx / 280);
+            const x = globalIdx % 280;
             const plotRow = Math.floor(y / 28);
             const plotCol = Math.floor(x / 28);
-            const plotIdx = plotRow * 7 + plotCol;
+            const plotIdx = plotRow * 10 + plotCol;
             const plot = plots[plotIdx];
 
             const localY = y % 28;
@@ -2838,15 +2886,14 @@ ${quadGrid}
         }
 
         function getGlobalIdxFromLocal(plot, localIdx) {
-            const gridIdx = plots.indexOf(plot);
-            const plotRow = Math.floor(gridIdx / 7);
-            const plotCol = gridIdx % 7;
+            const plotRow = Math.floor(gridIdx / 10);
+            const plotCol = gridIdx % 10;
 
             const localY = Math.floor(localIdx / 28);
             const localX = localIdx % 28;
             const globalY = plotRow * 28 + localY;
             const globalX = plotCol * 28 + localX;
-            return globalY * 196 + globalX;
+            return globalY * 280 + globalX;
         }
 
         function bigintToLEHex(n, bytesCount) {

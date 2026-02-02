@@ -1413,11 +1413,13 @@
             addLog(`Following chains for ${targetPlots.length} plots...`);
             const headIds = targetPlots.map(p => p.headId);
             const currentHeads = await fetchLatestTxidsBulk(headIds);
+            console.log("Heads found:", currentHeads);
             targetPlots.forEach((p, i) => p.headId = currentHeads[i]);
 
             // 2. Fetch all transaction data in bulk
             addLog(`Fetching hex data...`);
             const txDataMap = await fetchBulkHexDirect(targetPlots.map(p => p.headId));
+            console.log("Hex data loaded. Count:", Object.keys(txDataMap).length);
 
             // 3. Loop in chunks to prevent UI freeze
             const chunkSize = 2; // Process 2 plots per frame
@@ -1474,8 +1476,12 @@
                     }
                 }
 
-                if (toCheck.length === 0) break;
+                if (toCheck.length === 0) {
+                    console.log("No more txids to check.");
+                    break;
+                }
 
+                console.log(`Iteration ${iter}: Checking ${toCheck.length} txids...`);
                 // Batch the spent check (Whatsonchain limit is 20)
                 let madeProgressInIter = false;
                 for (let b = 0; b < toCheck.length; b += 20) {
@@ -1489,9 +1495,15 @@
                             body: JSON.stringify({ utxos: batch })
                         });
 
-                        if (!resp.ok) continue;
+                        console.log(`Proxy response: ${resp.status}`);
+                        if (!resp.ok) {
+                            const errBody = await resp.text();
+                            console.error(`Proxy Error Body: ${errBody}`);
+                            continue;
+                        }
 
                         const data = await resp.json();
+                        console.log(`Batch result:`, data);
                         data.forEach((item, idx) => {
                             const originalIdx = batchIndices[idx];
                             if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
@@ -1507,6 +1519,7 @@
                 }
                 if (!madeProgressInIter) break;
             }
+            console.log("Sync loop finished. Final Heads:", current);
             return current;
         }
 

@@ -1458,725 +1458,709 @@
         async function fetchLatestTxidsBulk(txids) {
             addLog(`Following ${txids.length} txids...`);
             let current = [...txids];
-            let finished = new Array(txids.length).fill(false);
+            const MAX_DEPTH = 50;
 
-            for (let iter = 0; iter < 50; iter++) {
-                const toCheck = [];
-                const checkIndices = [];
-                for (let i = 0; i < current.length; i++) {
-                    const id = current[i];
-                    if (!finished[i] && id && id.length === 64) {
-                        async function fetchLatestTxidsBulk(txids) {
-                            addLog(`Following ${txids.length} txids...`);
-                            let current = [...txids];
-                            const MAX_DEPTH = 50;
-
-                            // Helper to check spending of a single UTXO via GET
-                            const checkSpentOne = async (txid) => {
-                                try {
-                                    const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/0/spent`);
-                                    if (res.ok) {
-                                        const data = await res.json();
-                                        if (data.spentIn && (data.spentIn.txid || data.spentIn.tx_hash)) {
-                                            return data.spentIn.txid || data.spentIn.tx_hash;
-                                        }
-                                    }
-                                    return null; // Not spent or error
-                                } catch (e) { return null; }
-                            };
-
-                            for (let iter = 0; iter < MAX_DEPTH; iter++) {
-                                // Find indices that need checking
-                                const activeIndices = current.map((id, idx) => ({ id, idx })).filter(x => x.id && x.id.length === 64);
-                                if (activeIndices.length === 0) break;
-
-                                // Check them in batches
-                                let progress = false;
-                                const BATCH_SIZE = 5;
-
-                                for (let i = 0; i < activeIndices.length; i += BATCH_SIZE) {
-                                    const batch = activeIndices.slice(i, i + BATCH_SIZE);
-                                    const results = await Promise.all(batch.map(item => checkSpentOne(item.id)));
-
-                                    results.forEach((nextTxid, batchIdx) => {
-                                        if (nextTxid) {
-                                            current[batch[batchIdx].idx] = nextTxid;
-                                            progress = true;
-                                        } else {
-                                            // If not spent, we mark strictly as finished by not including in next iter?
-                                            // Actually current logic just keeps checking head. 
-                                            // Optimization: we can stop checking if we confirmed unspent recently?
-                                            // For simplicity, we just check heads. If checkSpentOne returns null, it remains as is.
-                                        }
-                                    });
-
-                                    // Tiny throttle
-                                    await new Promise(r => setTimeout(r, 100));
-                                }
-
-                                if (!progress) break; // If no one moved, we are at heads
-                            }
-
-                            return current;
+            // Helper to check spending of a single UTXO via GET
+            const checkSpentOne = async (txid) => {
+                try {
+                    const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/0/spent`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.spentIn && (data.spentIn.txid || data.spentIn.tx_hash)) {
+                            return data.spentIn.txid || data.spentIn.tx_hash;
                         }
+                    }
+                    return null; // Not spent or error
+                } catch (e) { return null; }
+            };
 
-                        async function fetchBulkHexDirect(txids) {
-                            const cleanIds = [...new Set(txids.filter(id => id && id.length === 64))];
-                            if (cleanIds.length === 0) return {};
+            for (let iter = 0; iter < MAX_DEPTH; iter++) {
+                // Find indices that need checking
+                const activeIndices = current.map((id, idx) => ({ id, idx })).filter(x => x.id && x.id.length === 64);
+                if (activeIndices.length === 0) break;
 
-                            addLog(`Fetching ${cleanIds.length} HEXs via GET...`);
-                            const map = {};
-                            const BATCH_SIZE = 3; // Rate limit protection
+                // Check them in batches
+                let progress = false;
+                const BATCH_SIZE = 5;
 
-                            for (let i = 0; i < cleanIds.length; i += BATCH_SIZE) {
-                                const batch = cleanIds.slice(i, i + BATCH_SIZE);
-                                await Promise.all(batch.map(async (txid) => {
-                                    try {
-                                        const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/hex`);
-                                        if (res.ok) {
-                                            const hex = await res.text();
-                                            map[txid] = hex;
-                                        } else {
-                                            console.warn(`Failed to fetch hex for ${txid}`);
-                                        }
-                                    } catch (e) {
-                                        console.error(`Error fetching hex for ${txid}`, e);
-                                    }
-                                }));
-                                // Throttle
-                                await new Promise(r => setTimeout(r, 200));
-                            }
-                            return map;
+                for (let i = 0; i < activeIndices.length; i += BATCH_SIZE) {
+                    const batch = activeIndices.slice(i, i + BATCH_SIZE);
+                    const results = await Promise.all(batch.map(item => checkSpentOne(item.id)));
+
+                    results.forEach((nextTxid, batchIdx) => {
+                        if (nextTxid) {
+                            current[batch[batchIdx].idx] = nextTxid;
+                            progress = true;
                         }
+                    });
 
+                    // Tiny throttle
+                    await new Promise(r => setTimeout(r, 100));
+                }
 
+                if (!progress) break; // If no one moved, we are at heads
+            }
 
-                        async function fetchBulkSpent(utxos) {
-                            // Unused in main path, but nice to have. Converted to individual checks?
-                            // Actually this is unused by current logic, let's just make it return empty to save space or mimic behavior.
-                            const results = await Promise.all(utxos.map(async u => {
-                                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${u.txid}/out/${u.vout}/spent`);
-                                if (res.ok) return res.json();
-                                return {};
-                            }));
-                            return results;
+            return current;
+        }
+
+        async function fetchBulkHexDirect(txids) {
+            const cleanIds = [...new Set(txids.filter(id => id && id.length === 64))];
+            if (cleanIds.length === 0) return {};
+
+            addLog(`Fetching ${cleanIds.length} HEXs via GET...`);
+            const map = {};
+            const BATCH_SIZE = 3; // Rate limit protection
+
+            for (let i = 0; i < cleanIds.length; i += BATCH_SIZE) {
+                const batch = cleanIds.slice(i, i + BATCH_SIZE);
+                await Promise.all(batch.map(async (txid) => {
+                    try {
+                        const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/hex`);
+                        if (res.ok) {
+                            const hex = await res.text();
+                            map[txid] = hex;
+                        } else {
+                            console.warn(`Failed to fetch hex for ${txid}`);
                         }
+                    } catch (e) {
+                        console.error(`Error fetching hex for ${txid}`, e);
+                    }
+                }));
+                // Throttle
+                await new Promise(r => setTimeout(r, 200));
+            }
+            return map;
+        }
 
-                        function drawGridOverlays() {
-                            const overlay = document.getElementById('quadrant-overlay');
-                            overlay.innerHTML = '';
-                            const pixelSize = 5;
 
-                            // 1. Draw Plot Boundaries (7x7 grid - every 28 pixels)
-                            for (let i = 1; i < 7; i++) {
-                                const pos = i * 28 * pixelSize;
 
-                                // Horizontal Plot Line
-                                const hLine = document.createElement('div');
-                                hLine.className = 'plot-grid-line';
-                                hLine.style.cssText = `position:absolute; top:${pos}px; left:0; right:0; height:2px; background:rgba(255,255,255,0.3); pointer-events:none; z-index:21;`;
-                                overlay.appendChild(hLine);
+        async function fetchBulkSpent(utxos) {
+            // Unused in main path, but nice to have. Converted to individual checks?
+            // Actually this is unused by current logic, let's just make it return empty to save space or mimic behavior.
+            const results = await Promise.all(utxos.map(async u => {
+                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${u.txid}/out/${u.vout}/spent`);
+                if (res.ok) return res.json();
+                return {};
+            }));
+            return results;
+        }
 
-                                // Vertical Plot Line
-                                const vLine = document.createElement('div');
-                                vLine.className = 'plot-grid-line';
-                                vLine.style.cssText = `position:absolute; left:${pos}px; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.3); pointer-events:none; z-index:21;`;
-                                overlay.appendChild(vLine);
-                            }
+        function drawGridOverlays() {
+            const overlay = document.getElementById('quadrant-overlay');
+            overlay.innerHTML = '';
+            const pixelSize = 5;
 
-                            // 2. Draw Quadrant Subdivisions (2x2 within each plot - every 14 pixels)
-                            // 7 plots * 2 quadrants = 14 quadrants per row/col.
-                            // But we can just iterate every 14 pixels * pixelSize
-                            // Total grid size 196 pixels. 196/14 = 14.
-                            // So lines at 14, 42, 70, 98, 126, 154, 182
-                            const quadLines = [14, 42, 70, 98, 126, 154, 182];
-                            quadLines.forEach(p => {
-                                const pos = p * pixelSize;
-                                // Horizontal Quadrant Line
-                                const hLine = document.createElement('div');
-                                hLine.className = 'quadrant-grid-line';
-                                hLine.style.cssText = `position:absolute; top:${pos}px; left:0; right:0; height:1px; background:rgba(255,255,255,0.1); pointer-events:none; z-index:20;`;
-                                overlay.appendChild(hLine);
+            // 1. Draw Plot Boundaries (7x7 grid - every 28 pixels)
+            for (let i = 1; i < 7; i++) {
+                const pos = i * 28 * pixelSize;
 
-                                // Vertical Quadrant Line
-                                const vLine = document.createElement('div');
-                                vLine.className = 'quadrant-grid-line';
-                                vLine.style.cssText = `position:absolute; left:${pos}px; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.1); pointer-events:none; z-index:20;`;
-                                overlay.appendChild(vLine);
-                            });
+                // Horizontal Plot Line
+                const hLine = document.createElement('div');
+                hLine.className = 'plot-grid-line';
+                hLine.style.cssText = `position:absolute; top:${pos}px; left:0; right:0; height:2px; background:rgba(255,255,255,0.3); pointer-events:none; z-index:21;`;
+                overlay.appendChild(hLine);
+
+                // Vertical Plot Line
+                const vLine = document.createElement('div');
+                vLine.className = 'plot-grid-line';
+                vLine.style.cssText = `position:absolute; left:${pos}px; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.3); pointer-events:none; z-index:21;`;
+                overlay.appendChild(vLine);
+            }
+
+            // 2. Draw Quadrant Subdivisions (2x2 within each plot - every 14 pixels)
+            // 7 plots * 2 quadrants = 14 quadrants per row/col.
+            // But we can just iterate every 14 pixels * pixelSize
+            // Total grid size 196 pixels. 196/14 = 14.
+            // So lines at 14, 42, 70, 98, 126, 154, 182
+            const quadLines = [14, 42, 70, 98, 126, 154, 182];
+            quadLines.forEach(p => {
+                const pos = p * pixelSize;
+                // Horizontal Quadrant Line
+                const hLine = document.createElement('div');
+                hLine.className = 'quadrant-grid-line';
+                hLine.style.cssText = `position:absolute; top:${pos}px; left:0; right:0; height:1px; background:rgba(255,255,255,0.1); pointer-events:none; z-index:20;`;
+                overlay.appendChild(hLine);
+
+                // Vertical Quadrant Line
+                const vLine = document.createElement('div');
+                vLine.className = 'quadrant-grid-line';
+                vLine.style.cssText = `position:absolute; left:${pos}px; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.1); pointer-events:none; z-index:20;`;
+                overlay.appendChild(vLine);
+            });
+        }
+
+        async function syncPlot(plot) {
+            const { PixelPlot28, bsv } = ScryptBundle;
+            try {
+                const provider = await getProvider();
+                const wif = getWif();
+                const addr = bsv.PrivateKey.fromWIF(wif).toAddress().toString();
+
+                const headId = await findHead(plot.genesisId, 0, addr);
+                plot.headId = headId;
+
+                const tx = await provider.getTransaction(headId);
+                plot.instance = PixelPlot28.fromTx(tx, 0);
+
+                decodePlotState(plot, true);
+            } catch (e) {
+                addLog(`Plot ${plot.index} sync failed: ${e.message}`, "error");
+            }
+        }
+
+        function decodePlotState(plot, resetEdits = true) {
+            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
+            let n = 0n;
+            for (let i = 0; i < rawHex.length; i += 2) {
+                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                n |= (byte << (BigInt(i / 2) * 8n));
+            }
+
+            // Batch DOM updates for better performance
+            requestAnimationFrame(() => {
+                for (let i = 0; i < 784; i++) {
+                    const color = Number((n >> (BigInt(i) * 5n)) & 31n);
+                    plot.originalPixels[i] = color;
+
+                    const globalIdx = getGlobalIdxFromLocal(plot, i);
+                    if (resetEdits || !plot.modifiedIndices.has(i)) {
+                        currentPixels[globalIdx] = color;
+                        const el = document.getElementById(`p${globalIdx}`);
+                        if (el) {
+                            el.style.backgroundColor = COLORS[color];
+                            el.classList.add('is-filled');
                         }
+                    }
+                }
+                if (resetEdits) {
+                    plot.modifiedIndices.clear();
+                }
+                updateQueueUI();
+            });
+        }
 
-                        async function syncPlot(plot) {
-                            const { PixelPlot28, bsv } = ScryptBundle;
-                            try {
-                                const provider = await getProvider();
-                                const wif = getWif();
-                                const addr = bsv.PrivateKey.fromWIF(wif).toAddress().toString();
+        function initPalette() {
+            const container = document.getElementById('palette');
+            COLORS.forEach((c, i) => {
+                const div = document.createElement('div');
+                div.className = 'swatch' + (i === 0 ? ' selected' : '');
+                div.style.backgroundColor = c;
+                div.onclick = () => selectColor(i);
+                container.appendChild(div);
+            });
+        }
 
-                                const headId = await findHead(plot.genesisId, 0, addr);
-                                plot.headId = headId;
+        // Canvas Context
+        let ctx = null;
 
-                                const tx = await provider.getTransaction(headId);
-                                plot.instance = PixelPlot28.fromTx(tx, 0);
+        function initGrid() {
+            const container = document.getElementById('grid');
+            container.innerHTML = ''; // Clear existing
+            // CSS handles grid layout, remove grid-template-columns style
+            container.style.display = 'block';
 
-                                decodePlotState(plot, true);
-                            } catch (e) {
-                                addLog(`Plot ${plot.index} sync failed: ${e.message}`, "error");
-                            }
-                        }
+            const canvas = document.createElement('canvas');
+            canvas.id = 'grid-canvas';
+            canvas.width = 196;
+            canvas.height = 196;
+            // Scale up with CSS to match pixel-size (5px per pixel)
+            canvas.style.width = (196 * 5) + 'px';
+            canvas.style.height = (196 * 5) + 'px';
+            canvas.style.imageRendering = 'pixelated'; // Crisp pixels
 
-                        function decodePlotState(plot, resetEdits = true) {
-                            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
-                            let n = 0n;
-                            for (let i = 0; i < rawHex.length; i += 2) {
-                                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
-                                n |= (byte << (BigInt(i / 2) * 8n));
-                            }
+            container.appendChild(canvas);
+            ctx = canvas.getContext('2d', { alpha: false }); // No transparency needed = faster
 
-                            // Batch DOM updates for better performance
-                            requestAnimationFrame(() => {
-                                for (let i = 0; i < 784; i++) {
-                                    const color = Number((n >> (BigInt(i) * 5n)) & 31n);
-                                    plot.originalPixels[i] = color;
+            // Initialize white background
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 196, 196);
 
-                                    const globalIdx = getGlobalIdxFromLocal(plot, i);
-                                    if (resetEdits || !plot.modifiedIndices.has(i)) {
-                                        currentPixels[globalIdx] = color;
-                                        const el = document.getElementById(`p${globalIdx}`);
-                                        if (el) {
-                                            el.style.backgroundColor = COLORS[color];
-                                            el.classList.add('is-filled');
-                                        }
-                                    }
-                                }
-                                if (resetEdits) {
-                                    plot.modifiedIndices.clear();
-                                }
-                                updateQueueUI();
-                            });
-                        }
+            // Interaction Overlay (for events) or bind directly to canvas?
+            // Binding to container/viewport catches events, but mapping needs to be precise.
+            // Let's attach to canvas.
+            // Note: Pan/Zoom happens on #grid-container which contains #grid.
+            // Event coordinates need to account for this.
 
-                        function initPalette() {
-                            const container = document.getElementById('palette');
-                            COLORS.forEach((c, i) => {
-                                const div = document.createElement('div');
-                                div.className = 'swatch' + (i === 0 ? ' selected' : '');
-                                div.style.backgroundColor = c;
-                                div.onclick = () => selectColor(i);
-                                container.appendChild(div);
-                            });
-                        }
+            setupCanvasInteractions();
+            window.addEventListener('mouseup', () => isDrawing = false);
+        }
 
-                        // Canvas Context
-                        let ctx = null;
+        function getPixelIndexFromEvent(e) {
+            const rect = document.getElementById('grid-canvas').getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
 
-                        function initGrid() {
-                            const container = document.getElementById('grid');
-                            container.innerHTML = ''; // Clear existing
-                            // CSS handles grid layout, remove grid-template-columns style
-                            container.style.display = 'block';
+            const pixelX = Math.floor(x / (rect.width / 196));
+            const pixelY = Math.floor(y / (rect.height / 196));
 
-                            const canvas = document.createElement('canvas');
-                            canvas.id = 'grid-canvas';
-                            canvas.width = 196;
-                            canvas.height = 196;
-                            // Scale up with CSS to match pixel-size (5px per pixel)
-                            canvas.style.width = (196 * 5) + 'px';
-                            canvas.style.height = (196 * 5) + 'px';
-                            canvas.style.imageRendering = 'pixelated'; // Crisp pixels
+            if (pixelX < 0 || pixelX >= 196 || pixelY < 0 || pixelY >= 196) return -1;
+            return pixelY * 196 + pixelX;
+        }
 
-                            container.appendChild(canvas);
-                            ctx = canvas.getContext('2d', { alpha: false }); // No transparency needed = faster
+        // --- Replacing Interaction Handlers ---
+        // Bind these in setupEventListeners() or ensure called after initGrid
 
-                            // Initialize white background
-                            ctx.fillStyle = '#FFFFFF';
-                            ctx.fillRect(0, 0, 196, 196);
+        function setupCanvasInteractions() {
+            const canvas = document.getElementById('grid-canvas');
 
-                            // Interaction Overlay (for events) or bind directly to canvas?
-                            // Binding to container/viewport catches events, but mapping needs to be precise.
-                            // Let's attach to canvas.
-                            // Note: Pan/Zoom happens on #grid-container which contains #grid.
-                            // Event coordinates need to account for this.
+            canvas.onmousedown = (e) => {
+                if (e.button === 0) { // Left click
+                    const idx = getPixelIndexFromEvent(e);
+                    if (idx === -1) return;
 
-                            setupCanvasInteractions();
-                            window.addEventListener('mouseup', () => isDrawing = false);
-                        }
+                    if (currentMode === 'paint') {
+                        isDrawing = true; paint(idx);
+                    } else {
+                        handleRentClick(idx);
+                    }
+                    // Don't prevent default if we want focus, but usually we do to prevent dragging
+                    // e.preventDefault(); 
+                }
+            };
 
-                        function getPixelIndexFromEvent(e) {
-                            const rect = document.getElementById('grid-canvas').getBoundingClientRect();
-                            const x = e.clientX - rect.left;
-                            const y = e.clientY - rect.top;
+            // Global mouse up handles isDrawing = false
 
-                            const pixelX = Math.floor(x / (rect.width / 196));
-                            const pixelY = Math.floor(y / (rect.height / 196));
+            canvas.onmousemove = (e) => {
+                const idx = getPixelIndexFromEvent(e);
+                if (idx !== -1) {
+                    if (isDrawing && currentMode === 'paint') paint(idx);
+                    updateHoverInfo(idx);
+                }
+            };
+        }
 
-                            if (pixelX < 0 || pixelX >= 196 || pixelY < 0 || pixelY >= 196) return -1;
-                            return pixelY * 196 + pixelX;
-                        }
+        function redrawGrid() {
+            if (!ctx) return;
+            const imageData = ctx.createImageData(196, 196);
+            const data = imageData.data;
 
-                        // --- Replacing Interaction Handlers ---
-                        // Bind these in setupEventListeners() or ensure called after initGrid
+            // Fill imageData from currentPixels
+            for (let i = 0; i < 196 * 196; i++) {
+                const colorIdx = currentPixels[i];
+                const hex = COLORS[colorIdx] || '#FFFFFF';
+                // Convert hex to rgb
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
 
-                        function setupCanvasInteractions() {
-                            const canvas = document.getElementById('grid-canvas');
+                const pos = i * 4;
+                data[pos] = r;
+                data[pos + 1] = g;
+                data[pos + 2] = b;
+                data[pos + 3] = 255; // Alpha
+            }
+            ctx.putImageData(imageData, 0, 0);
 
-                            canvas.onmousedown = (e) => {
-                                if (e.button === 0) { // Left click
-                                    const idx = getPixelIndexFromEvent(e);
-                                    if (idx === -1) return;
+            // Re-apply overlays (rent highlights etc)
+            // Ideally these are on a separate canvas layer or div overlays
+            // Currently overlays are separate divs in #quadrant-overlay which sits ON TOP.
+            // So we don't need to draw grid lines or rent markers on the pixel canvas!
+            // BUT 'is-filled' class on pixels was used for styling.
+            // And 'rent-selected' class was used for styling.
+            // We need to replicate visual cues for rent selection canvas-side OR use a simplified overlay system.
 
-                                    if (currentMode === 'paint') {
-                                        isDrawing = true; paint(idx);
-                                    } else {
-                                        handleRentClick(idx);
-                                    }
-                                    // Don't prevent default if we want focus, but usually we do to prevent dragging
-                                    // e.preventDefault(); 
-                                }
-                            };
+            // For now: Selection is easier with an SVG or Canvas overlay. 
+            // Let's assume selection highlights are handled by 'drawSelectionOverlay' which we might need to add,
+            // or simply tint the pixels in the main canvas.
+            // Actually, `highlightQuadrant` adds classes to divs. We don't have divs anymore.
+            // We need to implement `drawHighlights()`
+            drawHighlights();
+        }
 
-                            // Global mouse up handles isDrawing = false
+        function drawHighlights() {
+            // Rent selections
+            // Iterate all plots, check queued rents
+            // Draw transparent rects
 
-                            canvas.onmousemove = (e) => {
-                                const idx = getPixelIndexFromEvent(e);
-                                if (idx !== -1) {
-                                    if (isDrawing && currentMode === 'paint') paint(idx);
-                                    updateHoverInfo(idx);
-                                }
-                            };
-                        }
+            // We can draw directly on top of the pixels in the same context?
+            // Or better: use the existing #quadrant-overlay for this?
+            // The existing overlay has grid lines. We can add selection boxes there.
+            // Simpler: Just darken pixels in the pixel canvas? No, that modifies pixel data.
+            // Let's use a secondary canvas for UI highlights or append divs to the overlay layer.
 
-                        function redrawGrid() {
-                            if (!ctx) return;
-                            const imageData = ctx.createImageData(196, 196);
-                            const data = imageData.data;
+            // Let's stick to appending divs to #quadrant-overlay for selections as it's cleaner than modifying currentPixels buffer
+            updateSelectionOverlay();
+        }
 
-                            // Fill imageData from currentPixels
-                            for (let i = 0; i < 196 * 196; i++) {
-                                const colorIdx = currentPixels[i];
-                                const hex = COLORS[colorIdx] || '#FFFFFF';
-                                // Convert hex to rgb
-                                const r = parseInt(hex.slice(1, 3), 16);
-                                const g = parseInt(hex.slice(3, 5), 16);
-                                const b = parseInt(hex.slice(5, 7), 16);
+        function updateSelectionOverlay() {
+            // Clear previous selections from overlay (except grid lines)
+            const overlay = document.getElementById('quadrant-overlay');
+            // Remove old selection/rented rects
+            overlay.querySelectorAll('.selection-rect, .rented-rect').forEach(e => e.remove());
 
-                                const pos = i * 4;
-                                data[pos] = r;
-                                data[pos + 1] = g;
-                                data[pos + 2] = b;
-                                data[pos + 3] = 255; // Alpha
-                            }
-                            ctx.putImageData(imageData, 0, 0);
+            plots.forEach(plot => {
+                // Draw Active Rents (From Contract)
+                if (plot.activeRents) {
+                    plot.activeRents.forEach(rent => {
+                        const r = getQuadrantRect(plot, rent.qIdx);
+                        const div = document.createElement('div');
+                        div.className = 'rented-rect';
+                        div.style.left = r.x + 'px';
+                        div.style.top = r.y + 'px';
+                        div.style.width = r.w + 'px';
+                        div.style.height = r.h + 'px';
+                        // Keep the checkmark visual
+                        div.innerHTML = `<span style="position:absolute;bottom:0;right:0;color:lime;font-size:10px;">✓</span>`;
+                        overlay.appendChild(div);
+                    });
+                }
 
-                            // Re-apply overlays (rent highlights etc)
-                            // Ideally these are on a separate canvas layer or div overlays
-                            // Currently overlays are separate divs in #quadrant-overlay which sits ON TOP.
-                            // So we don't need to draw grid lines or rent markers on the pixel canvas!
-                            // BUT 'is-filled' class on pixels was used for styling.
-                            // And 'rent-selected' class was used for styling.
-                            // We need to replicate visual cues for rent selection canvas-side OR use a simplified overlay system.
+                // Draw Queued Rents (User Selection)
+                plot.queuedRents.forEach(qIdx => {
+                    const r = getQuadrantRect(plot, qIdx);
+                    // Don't draw selection over active rent (optional)
+                    const div = document.createElement('div');
+                    div.className = 'selection-rect';
+                    div.style.left = r.x + 'px';
+                    div.style.top = r.y + 'px';
+                    div.style.width = r.w + 'px';
+                    div.style.height = r.h + 'px';
+                    overlay.appendChild(div);
+                });
+            });
+        }
 
-                            // For now: Selection is easier with an SVG or Canvas overlay. 
-                            // Let's assume selection highlights are handled by 'drawSelectionOverlay' which we might need to add,
-                            // or simply tint the pixels in the main canvas.
-                            // Actually, `highlightQuadrant` adds classes to divs. We don't have divs anymore.
-                            // We need to implement `drawHighlights()`
-                            drawHighlights();
-                        }
+        function getQuadrantRect(plot, qIdx) {
+            const gridIdx = plots.indexOf(plot);
+            const plotRow = Math.floor(gridIdx / 7);
+            const plotCol = gridIdx % 7;
+            const qRow = Math.floor(qIdx / 2);
+            const qCol = qIdx % 2;
 
-                        function drawHighlights() {
-                            // Rent selections
-                            // Iterate all plots, check queued rents
-                            // Draw transparent rects
+            // Pixel scale is 5
+            const x = (plotCol * 28 + qCol * 14) * 5;
+            const y = (plotRow * 28 + qRow * 14) * 5;
+            return { x, y, w: 14 * 5, h: 14 * 5 };
+        }
 
-                            // We can draw directly on top of the pixels in the same context?
-                            // Or better: use the existing #quadrant-overlay for this?
-                            // The existing overlay has grid lines. We can add selection boxes there.
-                            // Simpler: Just darken pixels in the pixel canvas? No, that modifies pixel data.
-                            // Let's use a secondary canvas for UI highlights or append divs to the overlay layer.
+        // --- Updated Paint ---
+        function paint(globalIdx) {
+            if (currentPixels[globalIdx] === selectedColor) return;
+            currentPixels[globalIdx] = selectedColor;
 
-                            // Let's stick to appending divs to #quadrant-overlay for selections as it's cleaner than modifying currentPixels buffer
-                            updateSelectionOverlay();
-                        }
+            // Update Canvas directly for speed
+            if (ctx) {
+                const hex = COLORS[selectedColor];
+                ctx.fillStyle = hex;
+                // x, y index
+                const y = Math.floor(globalIdx / 196);
+                const x = globalIdx % 196;
+                ctx.fillRect(x, y, 1, 1);
+            }
 
-                        function updateSelectionOverlay() {
-                            // Clear previous selections from overlay (except grid lines)
-                            const overlay = document.getElementById('quadrant-overlay');
-                            // Remove old selection/rented rects
-                            overlay.querySelectorAll('.selection-rect, .rented-rect').forEach(e => e.remove());
+            // Logic
+            const y = Math.floor(globalIdx / 196);
+            const x = globalIdx % 196;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 7 + plotCol;
+            const plot = plots[plotIdx];
 
-                            plots.forEach(plot => {
-                                // Draw Active Rents (From Contract)
-                                if (plot.activeRents) {
-                                    plot.activeRents.forEach(rent => {
-                                        const r = getQuadrantRect(plot, rent.qIdx);
-                                        const div = document.createElement('div');
-                                        div.className = 'rented-rect';
-                                        div.style.left = r.x + 'px';
-                                        div.style.top = r.y + 'px';
-                                        div.style.width = r.w + 'px';
-                                        div.style.height = r.h + 'px';
-                                        // Keep the checkmark visual
-                                        div.innerHTML = `<span style="position:absolute;bottom:0;right:0;color:lime;font-size:10px;">✓</span>`;
-                                        overlay.appendChild(div);
-                                    });
-                                }
+            const localY = y % 28;
+            const localX = x % 28;
+            const localIdx = localY * 28 + localX;
 
-                                // Draw Queued Rents (User Selection)
-                                plot.queuedRents.forEach(qIdx => {
-                                    const r = getQuadrantRect(plot, qIdx);
-                                    // Don't draw selection over active rent (optional)
-                                    const div = document.createElement('div');
-                                    div.className = 'selection-rect';
-                                    div.style.left = r.x + 'px';
-                                    div.style.top = r.y + 'px';
-                                    div.style.width = r.w + 'px';
-                                    div.style.height = r.h + 'px';
-                                    overlay.appendChild(div);
-                                });
-                            });
-                        }
+            if (!plot.modifiedIndices.has(localIdx)) {
+                plot.modifiedIndices.add(localIdx);
+            }
+            updateQueueUI();
+        }
 
-                        function getQuadrantRect(plot, qIdx) {
-                            const gridIdx = plots.indexOf(plot);
-                            const plotRow = Math.floor(gridIdx / 7);
-                            const plotCol = gridIdx % 7;
-                            const qRow = Math.floor(qIdx / 2);
-                            const qCol = qIdx % 2;
+        // --- Updated Decode ---
+        function decodePlotState(plot, resetEdits = true) {
+            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
+            let n = 0n;
+            // Parse big int... (same as before)
+            for (let i = 0; i < rawHex.length; i += 2) {
+                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                n |= (byte << (BigInt(i / 2) * 8n));
+            }
 
-                            // Pixel scale is 5
-                            const x = (plotCol * 28 + qCol * 14) * 5;
-                            const y = (plotRow * 28 + qRow * 14) * 5;
-                            return { x, y, w: 14 * 5, h: 14 * 5 };
-                        }
+            for (let i = 0; i < 784; i++) {
+                const color = Number((n >> (BigInt(i) * 5n)) & 31n);
+                plot.originalPixels[i] = color;
 
-                        // --- Updated Paint ---
-                        function paint(globalIdx) {
-                            if (currentPixels[globalIdx] === selectedColor) return;
-                            currentPixels[globalIdx] = selectedColor;
+                const globalIdx = getGlobalIdxFromLocal(plot, i);
+                if (resetEdits || !plot.modifiedIndices.has(i)) {
+                    currentPixels[globalIdx] = color;
+                }
+            }
+            if (resetEdits) {
+                plot.modifiedIndices.clear();
+            }
+            // Trigger redraw
+            requestAnimationFrame(redrawGrid);
+            updateQueueUI();
+        }
 
-                            // Update Canvas directly for speed
-                            if (ctx) {
-                                const hex = COLORS[selectedColor];
-                                ctx.fillStyle = hex;
-                                // x, y index
-                                const y = Math.floor(globalIdx / 196);
-                                const x = globalIdx % 196;
-                                ctx.fillRect(x, y, 1, 1);
-                            }
+        function updateHoverInfo(globalIdx) {
+            const y = Math.floor(globalIdx / 196);
+            const x = globalIdx % 196;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 7 + plotCol;
 
-                            // Logic
-                            const y = Math.floor(globalIdx / 196);
-                            const x = globalIdx % 196;
-                            const plotRow = Math.floor(y / 28);
-                            const plotCol = Math.floor(x / 28);
-                            const plotIdx = plotRow * 7 + plotCol;
-                            const plot = plots[plotIdx];
+            const localY = y % 28;
+            const localX = x % 28;
+            const qX = Math.floor(localX / 14);
+            const qY = Math.floor(localY / 14);
+            const qIdx = qY * 2 + qX;
 
-                            const localY = y % 28;
-                            const localX = x % 28;
-                            const localIdx = localY * 28 + localX;
-
-                            if (!plot.modifiedIndices.has(localIdx)) {
-                                plot.modifiedIndices.add(localIdx);
-                            }
-                            updateQueueUI();
-                        }
-
-                        // --- Updated Decode ---
-                        function decodePlotState(plot, resetEdits = true) {
-                            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
-                            let n = 0n;
-                            // Parse big int... (same as before)
-                            for (let i = 0; i < rawHex.length; i += 2) {
-                                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
-                                n |= (byte << (BigInt(i / 2) * 8n));
-                            }
-
-                            for (let i = 0; i < 784; i++) {
-                                const color = Number((n >> (BigInt(i) * 5n)) & 31n);
-                                plot.originalPixels[i] = color;
-
-                                const globalIdx = getGlobalIdxFromLocal(plot, i);
-                                if (resetEdits || !plot.modifiedIndices.has(i)) {
-                                    currentPixels[globalIdx] = color;
-                                }
-                            }
-                            if (resetEdits) {
-                                plot.modifiedIndices.clear();
-                            }
-                            // Trigger redraw
-                            requestAnimationFrame(redrawGrid);
-                            updateQueueUI();
-                        }
-
-                        function updateHoverInfo(globalIdx) {
-                            const y = Math.floor(globalIdx / 196);
-                            const x = globalIdx % 196;
-                            const plotRow = Math.floor(y / 28);
-                            const plotCol = Math.floor(x / 28);
-                            const plotIdx = plotRow * 7 + plotCol;
-
-                            const localY = y % 28;
-                            const localX = x % 28;
-                            const qX = Math.floor(localX / 14);
-                            const qY = Math.floor(localY / 14);
-                            const qIdx = qY * 2 + qX;
-
-                            document.getElementById('plot-info-card').innerHTML = `
+            document.getElementById('plot-info-card').innerHTML = `
                 <div style="color:var(--accent); font-weight:600">PLOT ${plotIdx}</div>
                 <div>X: ${x}, Y: ${y}</div>
                 <div>Quadrant: Q${qIdx}</div>
             `;
-                        }
+        }
 
-                        function initPanZoom() {
-                            const container = document.getElementById('grid-container');
-                            const viewport = document.querySelector('.viewport');
+        function initPanZoom() {
+            const container = document.getElementById('grid-container');
+            const viewport = document.querySelector('.viewport');
 
-                            viewport.onwheel = (e) => {
-                                e.preventDefault();
-                                const zoomSpeed = 0.001;
-                                const delta = -e.deltaY * zoomSpeed;
-                                const oldScale = scale;
-                                scale = Math.min(Math.max(0.1, scale + scale * delta), 15);
+            viewport.onwheel = (e) => {
+                e.preventDefault();
+                const zoomSpeed = 0.001;
+                const delta = -e.deltaY * zoomSpeed;
+                const oldScale = scale;
+                scale = Math.min(Math.max(0.1, scale + scale * delta), 15);
 
-                                const vRect = viewport.getBoundingClientRect();
-                                // Mouse position relative to viewport
-                                const mouseX = e.clientX - vRect.left;
-                                const mouseY = e.clientY - vRect.top;
+                const vRect = viewport.getBoundingClientRect();
+                // Mouse position relative to viewport
+                const mouseX = e.clientX - vRect.left;
+                const mouseY = e.clientY - vRect.top;
 
-                                // To keep the point under the mouse stationary:
-                                // (mouseX - panX) / oldScale = (mouseX - newPanX) / scale
-                                const scaleRatio = scale / oldScale;
-                                panX = mouseX - (mouseX - panX) * scaleRatio;
-                                panY = mouseY - (mouseY - panY) * scaleRatio;
+                // To keep the point under the mouse stationary:
+                // (mouseX - panX) / oldScale = (mouseX - newPanX) / scale
+                const scaleRatio = scale / oldScale;
+                panX = mouseX - (mouseX - panX) * scaleRatio;
+                panY = mouseY - (mouseY - panY) * scaleRatio;
 
-                                updateTransform();
-                            };
+                updateTransform();
+            };
 
-                            viewport.onmousedown = (e) => {
-                                if (e.button === 2 || e.button === 1) { // Right or Middle click
-                                    isPanning = true;
-                                    lastMouseX = e.clientX;
-                                    lastMouseY = e.clientY;
-                                    container.style.cursor = 'grabbing';
-                                    e.preventDefault();
-                                }
-                            };
+            viewport.onmousedown = (e) => {
+                if (e.button === 2 || e.button === 1) { // Right or Middle click
+                    isPanning = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    container.style.cursor = 'grabbing';
+                    e.preventDefault();
+                }
+            };
 
-                            window.onmousemove = (e) => {
-                                if (isPanning) {
-                                    const dx = e.clientX - lastMouseX;
-                                    const dy = e.clientY - lastMouseY;
-                                    panX += dx;
-                                    panY += dy;
-                                    lastMouseX = e.clientX;
-                                    lastMouseY = e.clientY;
-                                    updateTransform();
-                                }
-                            };
+            window.onmousemove = (e) => {
+                if (isPanning) {
+                    const dx = e.clientX - lastMouseX;
+                    const dy = e.clientY - lastMouseY;
+                    panX += dx;
+                    panY += dy;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    updateTransform();
+                }
+            };
 
-                            window.onmouseup = () => {
-                                isPanning = false;
-                                container.style.cursor = 'grab';
-                            };
+            window.onmouseup = () => {
+                isPanning = false;
+                container.style.cursor = 'grab';
+            };
 
-                            viewport.oncontextmenu = (e) => e.preventDefault();
-                        }
+            viewport.oncontextmenu = (e) => e.preventDefault();
+        }
 
-                        function updateTransform() {
-                            const container = document.getElementById('grid-container');
-                            // Using requestAnimationFrame for silky smooth performance
-                            requestAnimationFrame(() => {
-                                container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-                            });
-                        }
+        function updateTransform() {
+            const container = document.getElementById('grid-container');
+            // Using requestAnimationFrame for silky smooth performance
+            requestAnimationFrame(() => {
+                container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+            });
+        }
 
-                        // --- UI ACTIONS ---
-                        function setMode(mode) {
-                            // Stop history playback if leaving history mode
-                            if (currentMode === 'history' && mode !== 'history') {
-                                historyStop();
-                                restoreFromHistory();
-                            }
+        // --- UI ACTIONS ---
+        function setMode(mode) {
+            // Stop history playback if leaving history mode
+            if (currentMode === 'history' && mode !== 'history') {
+                historyStop();
+                restoreFromHistory();
+            }
 
-                            currentMode = mode;
-                            document.getElementById('paint-mode-btn').classList.toggle('active', mode === 'paint');
-                            document.getElementById('rent-mode-btn').classList.toggle('active', mode === 'rent');
-                            document.getElementById('history-mode-btn').classList.toggle('active', mode === 'history');
-                            document.getElementById('rent-options').style.display = mode === 'rent' ? 'block' : 'none';
-                            document.getElementById('history-options').style.display = mode === 'history' ? 'block' : 'none';
-                            document.body.classList.toggle('rent-mode', mode === 'rent');
-                            document.body.classList.toggle('history-mode', mode === 'history');
+            currentMode = mode;
+            document.getElementById('paint-mode-btn').classList.toggle('active', mode === 'paint');
+            document.getElementById('rent-mode-btn').classList.toggle('active', mode === 'rent');
+            document.getElementById('history-mode-btn').classList.toggle('active', mode === 'history');
+            document.getElementById('rent-options').style.display = mode === 'rent' ? 'block' : 'none';
+            document.getElementById('history-options').style.display = mode === 'history' ? 'block' : 'none';
+            document.body.classList.toggle('rent-mode', mode === 'rent');
+            document.body.classList.toggle('history-mode', mode === 'history');
 
-                            // Clear rent selections when switching to paint
-                            if (mode === 'paint') {
-                                clearRentSelections();
-                                clearRentedDisplay();
-                            }
+            // Clear rent selections when switching to paint
+            if (mode === 'paint') {
+                clearRentSelections();
+                clearRentedDisplay();
+            }
 
-                            // Show rented quadrants when entering rent mode
-                            if (mode === 'rent') {
-                                setTimeout(() => showRentedQuadrants(), 50);
-                            }
+            // Show rented quadrants when entering rent mode
+            if (mode === 'rent') {
+                setTimeout(() => showRentedQuadrants(), 50);
+            }
 
-                            // Hide palette card if not in paint mode
-                            const paletteCard = document.getElementById('palette-card');
-                            if (paletteCard) paletteCard.style.display = mode === 'paint' ? 'block' : 'none';
+            // Hide palette card if not in paint mode
+            const paletteCard = document.getElementById('palette-card');
+            if (paletteCard) paletteCard.style.display = mode === 'paint' ? 'block' : 'none';
 
-                            updateQueueUI();
-                            addLog(`Switched to ${mode.toUpperCase()} mode.`);
-                        }
+            updateQueueUI();
+            addLog(`Switched to ${mode.toUpperCase()} mode.`);
+        }
 
-                        function setRentPeriod(blocks) {
-                            rentPeriod = blocks;
-                            document.querySelectorAll('.rent-period-btn').forEach(btn => {
-                                const btnBlocks = {
-                                    '6 blk': 6,
-                                    '36 blk': 36,
-                                    '1 day': 144,
-                                    '1 week': 1008
-                                }[btn.textContent.trim()];
-                                btn.classList.toggle('active', btnBlocks === blocks);
-                            });
-                            const labels = { 6: '~1hr', 36: '~6hrs', 144: '~1 day', 1008: '~1 week' };
-                            addLog(`Rent period: ${blocks} blocks (${labels[blocks] || blocks + ' blocks'})`);
-                        }
+        function setRentPeriod(blocks) {
+            rentPeriod = blocks;
+            document.querySelectorAll('.rent-period-btn').forEach(btn => {
+                const btnBlocks = {
+                    '6 blk': 6,
+                    '36 blk': 36,
+                    '1 day': 144,
+                    '1 week': 1008
+                }[btn.textContent.trim()];
+                btn.classList.toggle('active', btnBlocks === blocks);
+            });
+            const labels = { 6: '~1hr', 36: '~6hrs', 144: '~1 day', 1008: '~1 week' };
+            addLog(`Rent period: ${blocks} blocks (${labels[blocks] || blocks + ' blocks'})`);
+        }
 
-                        function clearRentSelections() {
-                            document.querySelectorAll('.pixel.rent-selected').forEach(el => {
-                                el.classList.remove('rent-selected');
-                            });
-                            plots.forEach(plot => plot.queuedRents.clear());
-                            hideRentInfo();
-                        }
+        function clearRentSelections() {
+            document.querySelectorAll('.pixel.rent-selected').forEach(el => {
+                el.classList.remove('rent-selected');
+            });
+            plots.forEach(plot => plot.queuedRents.clear());
+            hideRentInfo();
+        }
 
-                        function zoomToPlot(plotIdx) {
-                            const plot = plots[plotIdx];
-                            const plotRow = Math.floor(plotIdx / 7);
-                            const plotCol = plotIdx % 7;
+        function zoomToPlot(plotIdx) {
+            const plot = plots[plotIdx];
+            const plotRow = Math.floor(plotIdx / 7);
+            const plotCol = plotIdx % 7;
 
-                            const viewport = document.querySelector('.viewport');
-                            const vRect = viewport.getBoundingClientRect();
+            const viewport = document.querySelector('.viewport');
+            const vRect = viewport.getBoundingClientRect();
 
-                            // Calculate center of plot in grid coordinates
-                            const pixelSize = 5; // var(--pixel-size)
-                            const plotCenterX = (plotCol * 28 + 14) * pixelSize;
-                            const plotCenterY = (plotRow * 28 + 14) * pixelSize;
+            // Calculate center of plot in grid coordinates
+            const pixelSize = 5; // var(--pixel-size)
+            const plotCenterX = (plotCol * 28 + 14) * pixelSize;
+            const plotCenterY = (plotRow * 28 + 14) * pixelSize;
 
-                            // Zoom in and center on plot
-                            scale = 4;
-                            panX = (vRect.width / 2) - (plotCenterX * scale);
-                            panY = (vRect.height / 2) - (plotCenterY * scale);
+            // Zoom in and center on plot
+            scale = 4;
+            panX = (vRect.width / 2) - (plotCenterX * scale);
+            panY = (vRect.height / 2) - (plotCenterY * scale);
 
-                            updateTransform();
-                            addLog(`Zoomed to Plot ${plotIdx}`);
-                        }
+            updateTransform();
+            addLog(`Zoomed to Plot ${plotIdx}`);
+        }
 
-                        function updateFeeLabel(val) {
-                            feeRate = parseInt(val);
-                            document.getElementById('fee-val').innerText = val;
-                            addLog(`Fee rate: ${val} sat/kb (${(val / 1000).toFixed(2)} sat/byte)`);
-                        }
+        function updateFeeLabel(val) {
+            feeRate = parseInt(val);
+            document.getElementById('fee-val').innerText = val;
+            addLog(`Fee rate: ${val} sat/kb (${(val / 1000).toFixed(2)} sat/byte)`);
+        }
 
-                        function selectColor(idx) {
-                            selectedColor = idx;
-                            document.querySelectorAll('.swatch').forEach((s, i) => s.classList.toggle('selected', i === idx));
-                            updatePriceLabel();
-                        }
+        function selectColor(idx) {
+            selectedColor = idx;
+            document.querySelectorAll('.swatch').forEach((s, i) => s.classList.toggle('selected', i === idx));
+            updatePriceLabel();
+        }
 
-                        function updatePriceLabel() {
-                            let price = (selectedColor <= 1) ? 1 : (selectedColor >= 28 ? 5 : 3);
-                            document.getElementById('selected-price').innerText = `${price} SAT / PIXEL`;
-                        }
+        function updatePriceLabel() {
+            let price = (selectedColor <= 1) ? 1 : (selectedColor >= 28 ? 5 : 3);
+            document.getElementById('selected-price').innerText = `${price} SAT / PIXEL`;
+        }
 
-                        // --- CANAVAS & INTERACTION UPDATES ---
+        // --- CANAVAS & INTERACTION UPDATES ---
 
-                        function paint(globalIdx) {
-                            if (currentPixels[globalIdx] === selectedColor) return;
-                            currentPixels[globalIdx] = selectedColor;
+        function paint(globalIdx) {
+            if (currentPixels[globalIdx] === selectedColor) return;
+            currentPixels[globalIdx] = selectedColor;
 
-                            // 1. Update Canvas directly for speed
-                            if (ctx) {
-                                const hex = COLORS[selectedColor];
-                                ctx.fillStyle = hex;
-                                const y = Math.floor(globalIdx / 196);
-                                const x = globalIdx % 196;
-                                ctx.fillRect(x, y, 1, 1);
-                            }
+            // 1. Update Canvas directly for speed
+            if (ctx) {
+                const hex = COLORS[selectedColor];
+                ctx.fillStyle = hex;
+                const y = Math.floor(globalIdx / 196);
+                const x = globalIdx % 196;
+                ctx.fillRect(x, y, 1, 1);
+            }
 
-                            // 2. Logic & State
-                            const y = Math.floor(globalIdx / 196);
-                            const x = globalIdx % 196;
-                            const plotRow = Math.floor(y / 28);
-                            const plotCol = Math.floor(x / 28);
-                            const plotIdx = plotRow * 7 + plotCol;
-                            const plot = plots[plotIdx];
+            // 2. Logic & State
+            const y = Math.floor(globalIdx / 196);
+            const x = globalIdx % 196;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 7 + plotCol;
+            const plot = plots[plotIdx];
 
-                            const localY = y % 28;
-                            const localX = x % 28;
-                            const localIdx = localY * 28 + localX;
+            const localY = y % 28;
+            const localX = x % 28;
+            const localIdx = localY * 28 + localX;
 
-                            // Check against original to toggle 'modified' state
-                            if (currentPixels[globalIdx] !== plot.originalPixels[localIdx]) {
-                                plot.modifiedIndices.add(localIdx);
-                            } else {
-                                plot.modifiedIndices.delete(localIdx);
-                            }
-                            updateQueueUI();
-                        }
+            // Check against original to toggle 'modified' state
+            if (currentPixels[globalIdx] !== plot.originalPixels[localIdx]) {
+                plot.modifiedIndices.add(localIdx);
+            } else {
+                plot.modifiedIndices.delete(localIdx);
+            }
+            updateQueueUI();
+        }
 
-                        function handleRentClick(globalIdx) {
-                            const y = Math.floor(globalIdx / 196);
-                            const x = globalIdx % 196;
-                            const plotRow = Math.floor(y / 28);
-                            const plotCol = Math.floor(x / 28);
-                            const plotIdx = plotRow * 7 + plotCol;
-                            const plot = plots[plotIdx];
+        function handleRentClick(globalIdx) {
+            const y = Math.floor(globalIdx / 196);
+            const x = globalIdx % 196;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 7 + plotCol;
+            const plot = plots[plotIdx];
 
-                            const localY = y % 28;
-                            const localX = x % 28;
-                            const qX = Math.floor(localX / 14);
-                            const qY = Math.floor(localY / 14);
-                            const qIdx = qY * 2 + qX;
+            const localY = y % 28;
+            const localX = x % 28;
+            const qX = Math.floor(localX / 14);
+            const qY = Math.floor(localY / 14);
+            const qIdx = qY * 2 + qX;
 
-                            // Toggle quadrant selection
-                            if (plot.queuedRents.has(qIdx)) {
-                                plot.queuedRents.delete(qIdx);
-                                addLog(`Removed Q${qIdx} from Plot ${plotIdx}`);
-                            } else {
-                                plot.queuedRents.add(qIdx);
-                                addLog(`Added Q${qIdx} to Plot ${plotIdx} (${rentPeriod} blocks)`);
-                            }
+            // Toggle quadrant selection
+            if (plot.queuedRents.has(qIdx)) {
+                plot.queuedRents.delete(qIdx);
+                addLog(`Removed Q${qIdx} from Plot ${plotIdx}`);
+            } else {
+                plot.queuedRents.add(qIdx);
+                addLog(`Added Q${qIdx} to Plot ${plotIdx} (${rentPeriod} blocks)`);
+            }
 
-                            // Update visuals
-                            updateSelectionOverlay();
-                            updateQueueUI();
+            // Update visuals
+            updateSelectionOverlay();
+            updateQueueUI();
 
-                            // Show rent info popup (Canvas version)
-                            showRentInfo(plotIdx, globalIdx);
-                        }
+            // Show rent info popup (Canvas version)
+            showRentInfo(plotIdx, globalIdx);
+        }
 
-                        function clearRentSelections() {
-                            plots.forEach(plot => plot.queuedRents.clear());
-                            updateSelectionOverlay();
-                            hideRentInfo();
-                        }
+        function clearRentSelections() {
+            plots.forEach(plot => plot.queuedRents.clear());
+            updateSelectionOverlay();
+            hideRentInfo();
+        }
 
-                        function showRentInfo(plotIdx, nearGlobalIdx) {
-                            hideRentInfo();
-                            const plot = plots[plotIdx];
-                            if (!plot.instance) return;
+        function showRentInfo(plotIdx, nearGlobalIdx) {
+            hideRentInfo();
+            const plot = plots[plotIdx];
+            if (!plot.instance) return;
 
-                            const popup = document.createElement('div');
-                            popup.className = 'rent-info-popup';
-                            popup.id = 'rent-info-popup';
+            const popup = document.createElement('div');
+            popup.className = 'rent-info-popup';
+            popup.id = 'rent-info-popup';
 
-                            const rentPrice = plot.instance.rentPricePerBlock || 100n;
-                            const totalCost = BigInt(rentPeriod) * rentPrice * BigInt(Math.max(1, plot.queuedRents.size));
+            const rentPrice = plot.instance.rentPricePerBlock || 100n;
+            const totalCost = BigInt(rentPeriod) * rentPrice * BigInt(Math.max(1, plot.queuedRents.size));
 
-                            popup.innerHTML = `
+            popup.innerHTML = `
                 <h4>Plot ${plotIdx} Rent Info</h4>
                 <div class="info-row"><span>Price/block:</span> <span class="val">${rentPrice} sat</span></div>
                 <div class="info-row"><span>Period:</span> <span class="val">${rentPeriod} blocks</span></div>
@@ -2184,432 +2168,432 @@
                 <div class="info-row"><span>Total cost:</span> <span class="val">${totalCost} sat</span></div>
             `;
 
-                            const canvas = document.getElementById('grid-canvas');
-                            if (canvas) {
-                                const cRect = canvas.getBoundingClientRect();
-                                const y = Math.floor(nearGlobalIdx / 196);
-                                const x = nearGlobalIdx % 196;
-                                const pixelW = cRect.width / 196;
-                                const pixelH = cRect.height / 196;
-                                const screenX = cRect.left + x * pixelW;
-                                const screenY = cRect.top + y * pixelH;
+            const canvas = document.getElementById('grid-canvas');
+            if (canvas) {
+                const cRect = canvas.getBoundingClientRect();
+                const y = Math.floor(nearGlobalIdx / 196);
+                const x = nearGlobalIdx % 196;
+                const pixelW = cRect.width / 196;
+                const pixelH = cRect.height / 196;
+                const screenX = cRect.left + x * pixelW;
+                const screenY = cRect.top + y * pixelH;
 
-                                popup.style.left = Math.min(screenX + 20, window.innerWidth - 200) + 'px';
-                                popup.style.top = Math.max(screenY - 50, 10) + 'px';
-                                document.body.appendChild(popup);
-                                rentInfoPopup = popup;
-                            }
+                popup.style.left = Math.min(screenX + 20, window.innerWidth - 200) + 'px';
+                popup.style.top = Math.max(screenY - 50, 10) + 'px';
+                document.body.appendChild(popup);
+                rentInfoPopup = popup;
+            }
 
-                            setTimeout(() => {
-                                if (rentInfoPopup === popup) hideRentInfo();
-                            }, 3000);
+            setTimeout(() => {
+                if (rentInfoPopup === popup) hideRentInfo();
+            }, 3000);
+        }
+
+        function hideRentInfo() {
+            if (rentInfoPopup) {
+                rentInfoPopup.remove();
+                rentInfoPopup = null;
+            }
+        }
+
+        function showRentedQuadrants() {
+            plots.forEach(plot => {
+                plot.activeRents = [];
+                if (!plot.instance || !plot.instance.rentEnds) return;
+                for (let q = 0; q < 4; q++) {
+                    const exp = Number(plot.instance.rentEnds[q]);
+                    if (exp > currentBlockHeight) {
+                        plot.activeRents.push({
+                            qIdx: q,
+                            blocksLeft: exp - currentBlockHeight
+                        });
+                    }
+                }
+            });
+            updateSelectionOverlay();
+        }
+
+        function clearRentedDisplay() {
+            plots.forEach(p => p.activeRents = []);
+            updateSelectionOverlay();
+        }
+
+        // --- HISTORY MODE ---
+        async function loadHistory(limit = 50, startBlock = null, endBlock = null) {
+            addLog(`Loading history (${limit} txs, blocks: ${startBlock || 'any'}-${endBlock || 'any'})...`);
+            historyEvents = [];
+
+            // Try to load from cache first
+            const cacheKey = `pixel_history_${plots[0].genesisId}`;
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                try {
+                    const cachedEvents = JSON.parse(cached);
+                    historyEvents = cachedEvents.map(ev => ({
+                        ...ev,
+                        time: new Date(ev.time),
+                        pixels: new Uint8Array(Object.values(ev.pixels))
+                    }));
+                    addLog(`Loaded ${historyEvents.length} events from cache.`);
+                } catch (e) { console.error("Cache load failed:", e); }
+            }
+
+            try {
+                const owners = [...new Set(plots.map(p => p.owner))];
+                let newFound = 0;
+
+                for (const owner of owners) {
+                    const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${owner}/history`);
+                    if (!resp.ok) continue;
+
+                    const txs = await resp.json();
+                    const filteredTxs = txs.filter(tx => {
+                        const height = tx.height || tx.block_height || 0;
+                        if (startBlock && height < parseInt(startBlock)) return false;
+                        if (endBlock && height > parseInt(endBlock)) return false;
+                        return true;
+                    });
+
+                    const relevantTxs = filteredTxs.slice(0, Math.min(limit, filteredTxs.length));
+
+                    for (const txInfo of relevantTxs) {
+                        const txid = txInfo.tx_hash || txInfo.txid;
+                        if (historyEvents.some(ev => ev.txid === txid)) continue;
+
+                        const event = await parseHistoryTx(txid, owner);
+                        if (event) {
+                            historyEvents.push(event);
+                            newFound++;
                         }
+                    }
+                }
 
-                        function hideRentInfo() {
-                            if (rentInfoPopup) {
-                                rentInfoPopup.remove();
-                                rentInfoPopup = null;
-                            }
-                        }
+                historyEvents.sort((a, b) => (a.height || 0) - (b.height || 0));
 
-                        function showRentedQuadrants() {
-                            plots.forEach(plot => {
-                                plot.activeRents = [];
-                                if (!plot.instance || !plot.instance.rentEnds) return;
-                                for (let q = 0; q < 4; q++) {
-                                    const exp = Number(plot.instance.rentEnds[q]);
-                                    if (exp > currentBlockHeight) {
-                                        plot.activeRents.push({
-                                            qIdx: q,
-                                            blocksLeft: exp - currentBlockHeight
-                                        });
-                                    }
-                                }
-                            });
-                            updateSelectionOverlay();
-                        }
+                if (newFound > 0) {
+                    const toCache = historyEvents.map(ev => ({
+                        ...ev,
+                        pixels: Array.from(ev.pixels)
+                    }));
+                    localStorage.setItem(cacheKey, JSON.stringify(toCache));
+                    addLog(`Found ${newFound} new events. Total: ${historyEvents.length}`, "success");
+                }
 
-                        function clearRentedDisplay() {
-                            plots.forEach(p => p.activeRents = []);
-                            updateSelectionOverlay();
-                        }
+                if (historyEvents.length > 0) {
+                    document.getElementById('history-controls').style.display = 'block';
+                    document.getElementById('history-slider').max = historyEvents.length - 1;
+                    document.getElementById('history-slider').value = 0;
+                    historyIndex = 0;
+                    historyBasePixels = new Uint8Array(currentPixels);
+                    updateHistoryInfo();
+                    updateQueueUI();
+                } else {
+                    addLog("No history events found", "error");
+                }
+            } catch (e) {
+                addLog(`History load error: ${e.message}`, "error");
+            }
+        }
 
-                        // --- HISTORY MODE ---
-                        async function loadHistory(limit = 50, startBlock = null, endBlock = null) {
-                            addLog(`Loading history (${limit} txs, blocks: ${startBlock || 'any'}-${endBlock || 'any'})...`);
-                            historyEvents = [];
+        async function parseHistoryTx(txid, owner) {
+            try {
+                const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}`);
+                if (!resp.ok) return null;
 
-                            // Try to load from cache first
-                            const cacheKey = `pixel_history_${plots[0].genesisId}`;
-                            const cached = localStorage.getItem(cacheKey);
-                            if (cached) {
+                const tx = await resp.json();
+
+                for (const out of tx.vout) {
+                    const asm = out.scriptPubKey?.asm || '';
+                    if (asm.includes('OP_RETURN')) {
+                        const parts = asm.split(' ');
+                        const dataHex = parts.find(p => p.length > 10 && /^[0-9a-f]+$/i.test(p));
+
+                        if (dataHex) {
+                            const dataStr = hexToString(dataHex);
+
+                            if (dataStr.includes('UPDATE_') || dataStr.includes('RENT_')) {
+                                const plotMatch = dataStr.match(/PLOT(\d+)|P(\d+)/i);
+                                const plotIdx = plotMatch ? parseInt(plotMatch[1] || plotMatch[2]) : -1;
+
+                                const commentParts = dataStr.split('|');
+                                const comment = commentParts[1] ? commentParts[1].trim() : '';
+
                                 try {
-                                    const cachedEvents = JSON.parse(cached);
-                                    historyEvents = cachedEvents.map(ev => ({
-                                        ...ev,
-                                        time: new Date(ev.time),
-                                        pixels: new Uint8Array(Object.values(ev.pixels))
-                                    }));
-                                    addLog(`Loaded ${historyEvents.length} events from cache.`);
-                                } catch (e) { console.error("Cache load failed:", e); }
-                            }
+                                    const { PixelPlot28, bsv } = ScryptBundle;
+                                    const instance = PixelPlot28.fromTx(new bsv.Transaction(tx.hex), 0);
+                                    const plotPixels = decodePixelsFromHex(instance.pixels);
 
-                            try {
-                                const owners = [...new Set(plots.map(p => p.owner))];
-                                let newFound = 0;
-
-                                for (const owner of owners) {
-                                    const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${owner}/history`);
-                                    if (!resp.ok) continue;
-
-                                    const txs = await resp.json();
-                                    const filteredTxs = txs.filter(tx => {
-                                        const height = tx.height || tx.block_height || 0;
-                                        if (startBlock && height < parseInt(startBlock)) return false;
-                                        if (endBlock && height > parseInt(endBlock)) return false;
-                                        return true;
-                                    });
-
-                                    const relevantTxs = filteredTxs.slice(0, Math.min(limit, filteredTxs.length));
-
-                                    for (const txInfo of relevantTxs) {
-                                        const txid = txInfo.tx_hash || txInfo.txid;
-                                        if (historyEvents.some(ev => ev.txid === txid)) continue;
-
-                                        const event = await parseHistoryTx(txid, owner);
-                                        if (event) {
-                                            historyEvents.push(event);
-                                            newFound++;
-                                        }
-                                    }
-                                }
-
-                                historyEvents.sort((a, b) => (a.height || 0) - (b.height || 0));
-
-                                if (newFound > 0) {
-                                    const toCache = historyEvents.map(ev => ({
-                                        ...ev,
-                                        pixels: Array.from(ev.pixels)
-                                    }));
-                                    localStorage.setItem(cacheKey, JSON.stringify(toCache));
-                                    addLog(`Found ${newFound} new events. Total: ${historyEvents.length}`, "success");
-                                }
-
-                                if (historyEvents.length > 0) {
-                                    document.getElementById('history-controls').style.display = 'block';
-                                    document.getElementById('history-slider').max = historyEvents.length - 1;
-                                    document.getElementById('history-slider').value = 0;
-                                    historyIndex = 0;
-                                    historyBasePixels = new Uint8Array(currentPixels);
-                                    updateHistoryInfo();
-                                    updateQueueUI();
-                                } else {
-                                    addLog("No history events found", "error");
-                                }
-                            } catch (e) {
-                                addLog(`History load error: ${e.message}`, "error");
+                                    return {
+                                        txid: txid,
+                                        height: tx.blockheight || 0,
+                                        time: tx.blocktime ? new Date(tx.blocktime * 1000) : new Date(),
+                                        plotIndex: plotIdx,
+                                        type: dataStr.includes('RENT_') ? 'RENT' : 'UPDATE',
+                                        data: dataStr,
+                                        comment: comment,
+                                        pixels: plotPixels,
+                                        owner: owner
+                                    };
+                                } catch (e) { console.error("Failed to decode history instance:", e); }
                             }
                         }
+                    }
+                }
+            } catch (e) { console.error("Parse failed:", e); }
+            return null;
+        }
 
-                        async function parseHistoryTx(txid, owner) {
-                            try {
-                                const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}`);
-                                if (!resp.ok) return null;
+        function clearHistoryCache() {
+            const cacheKey = `pixel_history_${plots[0].genesisId}`;
+            localStorage.removeItem(cacheKey);
+            historyEvents = [];
+            document.getElementById('history-controls').style.display = 'none';
+            addLog("History cache cleared.");
+            updateQueueUI();
+        }
 
-                                const tx = await resp.json();
+        function hexToString(hex) {
+            let str = '';
+            for (let i = 0; i < hex.length; i += 2) {
+                const code = parseInt(hex.substr(i, 2), 16);
+                if (code >= 32 && code < 127) str += String.fromCharCode(code);
+            }
+            return str;
+        }
 
-                                for (const out of tx.vout) {
-                                    const asm = out.scriptPubKey?.asm || '';
-                                    if (asm.includes('OP_RETURN')) {
-                                        const parts = asm.split(' ');
-                                        const dataHex = parts.find(p => p.length > 10 && /^[0-9a-f]+$/i.test(p));
+        function decodePixelsFromHex(pixelsHex) {
+            const rawHex = pixelsHex.startsWith('0x') ? pixelsHex.slice(2) : pixelsHex;
+            let n = 0n;
+            for (let i = 0; i < rawHex.length; i += 2) {
+                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                n |= (byte << (BigInt(i / 2) * 8n));
+            }
+            const pixels = new Uint8Array(28 * 28);
+            for (let i = 0; i < 784; i++) {
+                pixels[i] = Number((n >> (BigInt(i) * 5n)) & 31n);
+            }
+            return pixels;
+        }
 
-                                        if (dataHex) {
-                                            const dataStr = hexToString(dataHex);
+        function historyStep(dir) {
+            historyIndex = Math.max(0, Math.min(historyEvents.length - 1, historyIndex + dir));
+            document.getElementById('history-slider').value = historyIndex;
+            applyHistoryEvent(historyIndex);
+            updateHistoryInfo();
+        }
 
-                                            if (dataStr.includes('UPDATE_') || dataStr.includes('RENT_')) {
-                                                const plotMatch = dataStr.match(/PLOT(\d+)|P(\d+)/i);
-                                                const plotIdx = plotMatch ? parseInt(plotMatch[1] || plotMatch[2]) : -1;
+        function historySeek(value) {
+            historyIndex = parseInt(value);
+            applyHistoryEvent(historyIndex);
+            updateHistoryInfo();
+        }
 
-                                                const commentParts = dataStr.split('|');
-                                                const comment = commentParts[1] ? commentParts[1].trim() : '';
+        function historyTogglePlay() {
+            if (historyPlaying) {
+                historyStop();
+            } else {
+                historyPlay();
+            }
+        }
 
-                                                try {
-                                                    const { PixelPlot28, bsv } = ScryptBundle;
-                                                    const instance = PixelPlot28.fromTx(new bsv.Transaction(tx.hex), 0);
-                                                    const plotPixels = decodePixelsFromHex(instance.pixels);
+        function historyPlay() {
+            historyPlaying = true;
+            document.getElementById('history-play-btn').classList.add('playing');
+            document.getElementById('history-play-btn').textContent = '⏸';
 
-                                                    return {
-                                                        txid: txid,
-                                                        height: tx.blockheight || 0,
-                                                        time: tx.blocktime ? new Date(tx.blocktime * 1000) : new Date(),
-                                                        plotIndex: plotIdx,
-                                                        type: dataStr.includes('RENT_') ? 'RENT' : 'UPDATE',
-                                                        data: dataStr,
-                                                        comment: comment,
-                                                        pixels: plotPixels,
-                                                        owner: owner
-                                                    };
-                                                } catch (e) { console.error("Failed to decode history instance:", e); }
-                                            }
-                                        }
-                                    }
-                                }
-                            } catch (e) { console.error("Parse failed:", e); }
-                            return null;
+            historyPlayInterval = setInterval(() => {
+                if (historyIndex >= historyEvents.length - 1) {
+                    historyStop();
+                    return;
+                }
+                historyStep(1);
+            }, 500); // 500ms per event
+        }
+
+        function historyStop() {
+            historyPlaying = false;
+            document.getElementById('history-play-btn').classList.remove('playing');
+            document.getElementById('history-play-btn').textContent = '▶▶';
+            if (historyPlayInterval) {
+                clearInterval(historyPlayInterval);
+                historyPlayInterval = null;
+            }
+        }
+
+        function applyHistoryEvent(idx) {
+            if (idx < 0 || idx >= historyEvents.length) return;
+
+            const event = historyEvents[idx];
+
+            // Clear previous highlights
+            document.querySelectorAll('.pixel.history-updated').forEach(el => {
+                el.classList.remove('history-updated');
+            });
+
+            // Find correct plot object (lookup by index property, NOT array index)
+            const plot = plots.find(p => p.index === event.plotIndex);
+            if (!plot) {
+                console.warn(`History event for unknown plot index: ${event.plotIndex}`);
+                return;
+            }
+
+            // Find previous state for this plot in history to show "points update"
+            let prevPixels = null;
+            for (let i = idx - 1; i >= 0; i--) {
+                if (historyEvents[i].plotIndex === event.plotIndex) {
+                    prevPixels = historyEvents[i].pixels;
+                    break;
+                }
+            }
+            // If no previous history found, use current original pixels as base
+            if (!prevPixels) {
+                prevPixels = plot.originalPixels;
+            }
+
+            // Update the grid pixels for this plot
+            if (event.pixels) {
+                const changedIndices = [];
+                for (let i = 0; i < 784; i++) {
+                    const color = event.pixels[i];
+                    // Pass the real plot object so getGlobalIdxFromLocal works correctly
+                    const globalIdx = getGlobalIdxFromLocal(plot, i);
+
+                    // Update current pixels and background
+                    currentPixels[globalIdx] = color;
+                    const el = document.getElementById(`p${globalIdx}`);
+                    if (el) {
+                        el.style.backgroundColor = COLORS[color];
+                        el.classList.add('is-filled');
+                        // If it changed compared to previous state, highlight it
+                        if (!prevPixels || prevPixels[i] !== color) {
+                            el.classList.add('history-updated');
+                            changedIndices.push(i);
                         }
+                    }
+                }
 
-                        function clearHistoryCache() {
-                            const cacheKey = `pixel_history_${plots[0].genesisId}`;
-                            localStorage.removeItem(cacheKey);
-                            historyEvents = [];
-                            document.getElementById('history-controls').style.display = 'none';
-                            addLog("History cache cleared.");
-                            updateQueueUI();
-                        }
+                addLog(`History Step ${idx + 1}: Plot ${event.plotIndex} - ${changedIndices.length} pixels updated.`);
 
-                        function hexToString(hex) {
-                            let str = '';
-                            for (let i = 0; i < hex.length; i += 2) {
-                                const code = parseInt(hex.substr(i, 2), 16);
-                                if (code >= 32 && code < 127) str += String.fromCharCode(code);
-                            }
-                            return str;
-                        }
+                // Zoom to the plot if it's not a rent event (rent events are larger scale)
+                if (event.type === 'UPDATE' && changedIndices.length > 0) {
+                    const gridIdx = plots.indexOf(plot);
+                    if (gridIdx !== -1) zoomToPlot(gridIdx);
+                }
+            }
+        }
 
-                        function decodePixelsFromHex(pixelsHex) {
-                            const rawHex = pixelsHex.startsWith('0x') ? pixelsHex.slice(2) : pixelsHex;
-                            let n = 0n;
-                            for (let i = 0; i < rawHex.length; i += 2) {
-                                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
-                                n |= (byte << (BigInt(i / 2) * 8n));
-                            }
-                            const pixels = new Uint8Array(28 * 28);
-                            for (let i = 0; i < 784; i++) {
-                                pixels[i] = Number((n >> (BigInt(i) * 5n)) & 31n);
-                            }
-                            return pixels;
-                        }
+        function updateHistoryInfo() {
+            const info = document.getElementById('history-info');
+            if (historyEvents.length === 0) {
+                info.textContent = 'No events';
+                return;
+            }
 
-                        function historyStep(dir) {
-                            historyIndex = Math.max(0, Math.min(historyEvents.length - 1, historyIndex + dir));
-                            document.getElementById('history-slider').value = historyIndex;
-                            applyHistoryEvent(historyIndex);
-                            updateHistoryInfo();
-                        }
-
-                        function historySeek(value) {
-                            historyIndex = parseInt(value);
-                            applyHistoryEvent(historyIndex);
-                            updateHistoryInfo();
-                        }
-
-                        function historyTogglePlay() {
-                            if (historyPlaying) {
-                                historyStop();
-                            } else {
-                                historyPlay();
-                            }
-                        }
-
-                        function historyPlay() {
-                            historyPlaying = true;
-                            document.getElementById('history-play-btn').classList.add('playing');
-                            document.getElementById('history-play-btn').textContent = '⏸';
-
-                            historyPlayInterval = setInterval(() => {
-                                if (historyIndex >= historyEvents.length - 1) {
-                                    historyStop();
-                                    return;
-                                }
-                                historyStep(1);
-                            }, 500); // 500ms per event
-                        }
-
-                        function historyStop() {
-                            historyPlaying = false;
-                            document.getElementById('history-play-btn').classList.remove('playing');
-                            document.getElementById('history-play-btn').textContent = '▶▶';
-                            if (historyPlayInterval) {
-                                clearInterval(historyPlayInterval);
-                                historyPlayInterval = null;
-                            }
-                        }
-
-                        function applyHistoryEvent(idx) {
-                            if (idx < 0 || idx >= historyEvents.length) return;
-
-                            const event = historyEvents[idx];
-
-                            // Clear previous highlights
-                            document.querySelectorAll('.pixel.history-updated').forEach(el => {
-                                el.classList.remove('history-updated');
-                            });
-
-                            // Find correct plot object (lookup by index property, NOT array index)
-                            const plot = plots.find(p => p.index === event.plotIndex);
-                            if (!plot) {
-                                console.warn(`History event for unknown plot index: ${event.plotIndex}`);
-                                return;
-                            }
-
-                            // Find previous state for this plot in history to show "points update"
-                            let prevPixels = null;
-                            for (let i = idx - 1; i >= 0; i--) {
-                                if (historyEvents[i].plotIndex === event.plotIndex) {
-                                    prevPixels = historyEvents[i].pixels;
-                                    break;
-                                }
-                            }
-                            // If no previous history found, use current original pixels as base
-                            if (!prevPixels) {
-                                prevPixels = plot.originalPixels;
-                            }
-
-                            // Update the grid pixels for this plot
-                            if (event.pixels) {
-                                const changedIndices = [];
-                                for (let i = 0; i < 784; i++) {
-                                    const color = event.pixels[i];
-                                    // Pass the real plot object so getGlobalIdxFromLocal works correctly
-                                    const globalIdx = getGlobalIdxFromLocal(plot, i);
-
-                                    // Update current pixels and background
-                                    currentPixels[globalIdx] = color;
-                                    const el = document.getElementById(`p${globalIdx}`);
-                                    if (el) {
-                                        el.style.backgroundColor = COLORS[color];
-                                        el.classList.add('is-filled');
-                                        // If it changed compared to previous state, highlight it
-                                        if (!prevPixels || prevPixels[i] !== color) {
-                                            el.classList.add('history-updated');
-                                            changedIndices.push(i);
-                                        }
-                                    }
-                                }
-
-                                addLog(`History Step ${idx + 1}: Plot ${event.plotIndex} - ${changedIndices.length} pixels updated.`);
-
-                                // Zoom to the plot if it's not a rent event (rent events are larger scale)
-                                if (event.type === 'UPDATE' && changedIndices.length > 0) {
-                                    const gridIdx = plots.indexOf(plot);
-                                    if (gridIdx !== -1) zoomToPlot(gridIdx);
-                                }
-                            }
-                        }
-
-                        function updateHistoryInfo() {
-                            const info = document.getElementById('history-info');
-                            if (historyEvents.length === 0) {
-                                info.textContent = 'No events';
-                                return;
-                            }
-
-                            const event = historyEvents[historyIndex];
-                            const timeStr = event.time ? event.time.toLocaleString() : 'Unknown';
-                            info.innerHTML = `
+            const event = historyEvents[historyIndex];
+            const timeStr = event.time ? event.time.toLocaleString() : 'Unknown';
+            info.innerHTML = `
                 <div style="font-weight:bold; margin-bottom:5px;">${historyIndex + 1} / ${historyEvents.length}</div>
                 <div style="color:var(--accent); font-size:12px; font-weight:600;">${event.type} Plot ${event.plotIndex}</div>
                 ${event.comment ? `<div style="color:var(--success); font-style:italic; margin:4px 0;">"${event.comment}"</div>` : ''}
                 <div style="font-size:9px; color:var(--text-dim); margin-bottom:4px;">${timeStr}</div>
                 <div><a href="https://whatsonchain.com/tx/${event.txid}" target="_blank" style="color:var(--accent); text-decoration:none; font-size:10px; border-bottom:1px solid currentColor;">${event.txid.substring(0, 16)}...</a></div>
             `;
-                        }
+        }
 
-                        function restoreFromHistory() {
-                            if (historyBasePixels) {
-                                // Restore original pixels
-                                for (let i = 0; i < currentPixels.length; i++) {
-                                    currentPixels[i] = historyBasePixels[i];
-                                    const el = document.getElementById(`p${i}`);
-                                    if (el) {
-                                        el.style.backgroundColor = COLORS[currentPixels[i]];
-                                        el.classList.add('is-filled');
-                                    }
-                                }
-                                historyBasePixels = null;
-                            }
-                            document.querySelectorAll('.pixel.history-updated').forEach(el => {
-                                el.classList.remove('history-updated');
-                            });
-                            document.getElementById('history-controls').style.display = 'none';
-                        }
+        function restoreFromHistory() {
+            if (historyBasePixels) {
+                // Restore original pixels
+                for (let i = 0; i < currentPixels.length; i++) {
+                    currentPixels[i] = historyBasePixels[i];
+                    const el = document.getElementById(`p${i}`);
+                    if (el) {
+                        el.style.backgroundColor = COLORS[currentPixels[i]];
+                        el.classList.add('is-filled');
+                    }
+                }
+                historyBasePixels = null;
+            }
+            document.querySelectorAll('.pixel.history-updated').forEach(el => {
+                el.classList.remove('history-updated');
+            });
+            document.getElementById('history-controls').style.display = 'none';
+        }
 
-                        function updateQueueUI() {
-                            const queueCubes = document.getElementById('queue-cubes');
-                            const errorCubesEl = document.getElementById('error-cubes');
-                            const errorSection = document.getElementById('queue-errors');
-                            const queueTitle = document.getElementById('queue-title');
+        function updateQueueUI() {
+            const queueCubes = document.getElementById('queue-cubes');
+            const errorCubesEl = document.getElementById('error-cubes');
+            const errorSection = document.getElementById('queue-errors');
+            const queueTitle = document.getElementById('queue-title');
 
-                            queueCubes.innerHTML = '';
+            queueCubes.innerHTML = '';
 
-                            if (currentMode === 'history') {
-                                queueTitle.innerText = "HISTORY EVENTS";
-                                if (historyEvents.length === 0) {
-                                    queueCubes.innerHTML = '<div style="color:rgba(255,255,255,0.2); text-align:center; padding:20px; width:100%;">No history loaded</div>';
-                                } else {
-                                    // Add "Clear History" cube/action
-                                    const clearBtn = document.createElement('div');
-                                    clearBtn.className = 'queue-cube error';
-                                    clearBtn.innerHTML = '<span class="plot-num">✕</span><span class="count">CLEAR</span>';
-                                    clearBtn.onclick = clearHistoryCache;
-                                    clearBtn.title = "Clear all cached history";
-                                    queueCubes.appendChild(clearBtn);
+            if (currentMode === 'history') {
+                queueTitle.innerText = "HISTORY EVENTS";
+                if (historyEvents.length === 0) {
+                    queueCubes.innerHTML = '<div style="color:rgba(255,255,255,0.2); text-align:center; padding:20px; width:100%;">No history loaded</div>';
+                } else {
+                    // Add "Clear History" cube/action
+                    const clearBtn = document.createElement('div');
+                    clearBtn.className = 'queue-cube error';
+                    clearBtn.innerHTML = '<span class="plot-num">✕</span><span class="count">CLEAR</span>';
+                    clearBtn.onclick = clearHistoryCache;
+                    clearBtn.title = "Clear all cached history";
+                    queueCubes.appendChild(clearBtn);
 
-                                    historyEvents.slice().reverse().forEach((ev, idx) => {
-                                        const actualIdx = historyEvents.length - 1 - idx;
-                                        const cube = document.createElement('div');
-                                        cube.className = 'queue-cube';
-                                        if (actualIdx === historyIndex) cube.style.borderColor = 'var(--success)';
-                                        cube.innerHTML = `
+                    historyEvents.slice().reverse().forEach((ev, idx) => {
+                        const actualIdx = historyEvents.length - 1 - idx;
+                        const cube = document.createElement('div');
+                        cube.className = 'queue-cube';
+                        if (actualIdx === historyIndex) cube.style.borderColor = 'var(--success)';
+                        cube.innerHTML = `
     <span class="plot-num">${ev.plotIndex}</span>
     <span class="count">${ev.type === 'RENT' ? 'RENT' : 'UPD'}</span>
 `;
-                                        cube.onclick = () => {
-                                            historyIndex = actualIdx;
-                                            document.getElementById('history-slider').value = historyIndex;
-                                            applyHistoryEvent(historyIndex);
-                                            updateHistoryInfo();
-                                            updateQueueUI();
-                                        };
-                                        cube.title = `${ev.type} Plot ${ev.plotIndex} at block ${ev.height}\n${ev.comment || 'No comment'}`;
-                                        queueCubes.appendChild(cube);
-                                    });
-                                }
-                                errorSection.style.display = 'none';
-                                return;
-                            }
+                        cube.onclick = () => {
+                            historyIndex = actualIdx;
+                            document.getElementById('history-slider').value = historyIndex;
+                            applyHistoryEvent(historyIndex);
+                            updateHistoryInfo();
+                            updateQueueUI();
+                        };
+                        cube.title = `${ev.type} Plot ${ev.plotIndex} at block ${ev.height}\n${ev.comment || 'No comment'}`;
+                        queueCubes.appendChild(cube);
+                    });
+                }
+                errorSection.style.display = 'none';
+                return;
+            }
 
-                            queueTitle.innerText = "TRANSACTION QUEUE";
-                            let totalActions = 0;
+            queueTitle.innerText = "TRANSACTION QUEUE";
+            let totalActions = 0;
 
-                            // Pixel update cubes
-                            plots.forEach(plot => {
-                                if (plot.modifiedIndices.size > 0) {
-                                    totalActions++;
-                                    const cube = document.createElement('div');
-                                    cube.className = 'queue-cube';
-                                    cube.dataset.plotIndex = plot.index;
-                                    cube.innerHTML = `
+            // Pixel update cubes
+            plots.forEach(plot => {
+                if (plot.modifiedIndices.size > 0) {
+                    totalActions++;
+                    const cube = document.createElement('div');
+                    cube.className = 'queue-cube';
+                    cube.dataset.plotIndex = plot.index;
+                    cube.innerHTML = `
 <span class="plot-num">${plot.index}</span>
 <span class="count">${plot.modifiedIndices.size}px</span>
                     `;
-                                    cube.onclick = () => zoomToPlot(plot.index);
-                                    cube.title = `Plot ${plot.index}: ${plot.modifiedIndices.size} pixels - Click to zoom`;
-                                    queueCubes.appendChild(cube);
-                                }
-                            });
+                    cube.onclick = () => zoomToPlot(plot.index);
+                    cube.title = `Plot ${plot.index}: ${plot.modifiedIndices.size} pixels - Click to zoom`;
+                    queueCubes.appendChild(cube);
+                }
+            });
 
-                            // Rent cubes with quadrant grid visualization
-                            plots.forEach(plot => {
-                                if (plot.queuedRents.size > 0) {
-                                    totalActions++;
-                                    const cube = document.createElement('div');
-                                    cube.className = 'queue-cube rent-cube';
-                                    cube.dataset.plotIndex = plot.index;
+            // Rent cubes with quadrant grid visualization
+            plots.forEach(plot => {
+                if (plot.queuedRents.size > 0) {
+                    totalActions++;
+                    const cube = document.createElement('div');
+                    cube.className = 'queue-cube rent-cube';
+                    cube.dataset.plotIndex = plot.index;
 
-                                    // Build quadrant grid visualization
-                                    const quadGrid = `
+                    // Build quadrant grid visualization
+                    const quadGrid = `
 <div class="rent-quad-grid">
     <div class="rent-quad-cell ${plot.queuedRents.has(0) ? 'filled' : ''}"></div>
     <div class="rent-quad-cell ${plot.queuedRents.has(1) ? 'filled' : ''}"></div>
@@ -2618,469 +2602,469 @@
 </div>
                     `;
 
-                                    cube.innerHTML = `
+                    cube.innerHTML = `
 ${quadGrid}
 <span class="count">P${plot.index}</span>
                     `;
-                                    cube.onclick = () => zoomToPlot(plot.index);
-                                    const qList = Array.from(plot.queuedRents).join(',');
-                                    cube.title = `Plot ${plot.index}: Rent Q[${qList}] for ${rentPeriod} blocks (${plot.queuedRents.size} tx) - Click to zoom`;
-                                    queueCubes.appendChild(cube);
-                                }
-                            });
+                    cube.onclick = () => zoomToPlot(plot.index);
+                    const qList = Array.from(plot.queuedRents).join(',');
+                    cube.title = `Plot ${plot.index}: Rent Q[${qList}] for ${rentPeriod} blocks (${plot.queuedRents.size} tx) - Click to zoom`;
+                    queueCubes.appendChild(cube);
+                }
+            });
 
-                            if (totalActions === 0) {
-                                queueCubes.innerHTML = '<div style="color:rgba(255,255,255,0.2); text-align:center; padding:20px; width:100%;">No pending actions</div>';
-                            }
+            if (totalActions === 0) {
+                queueCubes.innerHTML = '<div style="color:rgba(255,255,255,0.2); text-align:center; padding:20px; width:100%;">No pending actions</div>';
+            }
 
-                            // Error cubes
-                            if (errorQueue.length > 0) {
-                                errorSection.style.display = 'block';
-                                errorCubesEl.innerHTML = '';
-                                errorQueue.forEach(err => {
-                                    const cube = document.createElement('div');
-                                    cube.className = 'queue-cube error';
-                                    cube.innerHTML = `
+            // Error cubes
+            if (errorQueue.length > 0) {
+                errorSection.style.display = 'block';
+                errorCubesEl.innerHTML = '';
+                errorQueue.forEach(err => {
+                    const cube = document.createElement('div');
+                    cube.className = 'queue-cube error';
+                    cube.innerHTML = `
 <span class="plot-num">${err.plotIndex}</span>
 <span class="count">${err.type}</span>
                     `;
-                                    cube.onclick = () => zoomToPlot(err.plotIndex);
-                                    cube.title = `Error: ${err.message} - Click to zoom`;
-                                    errorCubesEl.appendChild(cube);
-                                });
-                            } else {
-                                errorSection.style.display = 'none';
-                            }
-                        }
+                    cube.onclick = () => zoomToPlot(err.plotIndex);
+                    cube.title = `Error: ${err.message} - Click to zoom`;
+                    errorCubesEl.appendChild(cube);
+                });
+            } else {
+                errorSection.style.display = 'none';
+            }
+        }
 
-                        function addLog(msg, type = '', txid = null) {
-                            const stream = document.getElementById('log-stream');
-                            const div = document.createElement('div');
-                            div.className = 'log-msg' + (type ? ' ' + type : '');
+        function addLog(msg, type = '', txid = null) {
+            const stream = document.getElementById('log-stream');
+            const div = document.createElement('div');
+            div.className = 'log-msg' + (type ? ' ' + type : '');
 
-                            const time = new Date().toLocaleTimeString();
+            const time = new Date().toLocaleTimeString();
 
-                            if (txid) {
-                                // Create clickable TX link
-                                const shortTx = txid.substring(0, 8) + '...';
-                                div.innerHTML = `[${time}] ${msg} <a href="https://whatsonchain.com/tx/${txid}" target="_blank" style="color: var(--accent); text-decoration: underline;">${shortTx}</a>`;
-                            } else {
-                                div.innerText = `[${time}] ${msg}`;
-                            }
+            if (txid) {
+                // Create clickable TX link
+                const shortTx = txid.substring(0, 8) + '...';
+                div.innerHTML = `[${time}] ${msg} <a href="https://whatsonchain.com/tx/${txid}" target="_blank" style="color: var(--accent); text-decoration: underline;">${shortTx}</a>`;
+            } else {
+                div.innerText = `[${time}] ${msg}`;
+            }
 
-                            stream.prepend(div);
-                            console.log(msg, txid || '');
-                        }
+            stream.prepend(div);
+            console.log(msg, txid || '');
+        }
 
-                        function addTxLog(action, plotIdx, txid) {
-                            addLog(`${action} Plot ${plotIdx}:`, 'success', txid);
-                        }
+        function addTxLog(action, plotIdx, txid) {
+            addLog(`${action} Plot ${plotIdx}:`, 'success', txid);
+        }
 
-                        async function findHead(txid, outIdx = 0, userAddress = null) {
-                            try {
-                                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/${outIdx}/spent`);
-                                if (res.ok) {
-                                    const data = await res.json();
-                                    if (data.spentIn && (data.spentIn.txid || data.spentIn.tx_hash)) {
-                                        return findHead(data.spentIn.txid || data.spentIn.tx_hash, 0, userAddress);
-                                    }
-                                }
-                                return txid;
-                            } catch (e) { return txid; }
-                        }
+        async function findHead(txid, outIdx = 0, userAddress = null) {
+            try {
+                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/${outIdx}/spent`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.spentIn && (data.spentIn.txid || data.spentIn.tx_hash)) {
+                        return findHead(data.spentIn.txid || data.spentIn.tx_hash, 0, userAddress);
+                    }
+                }
+                return txid;
+            } catch (e) { return txid; }
+        }
 
-                        async function getProvider() {
-                            const { WhatsonchainProvider, bsv } = ScryptBundle;
-                            const p = new WhatsonchainProvider(bsv.Networks.mainnet);
+        async function getProvider() {
+            const { WhatsonchainProvider, bsv } = ScryptBundle;
+            const p = new WhatsonchainProvider(bsv.Networks.mainnet);
 
-                            // Use dynamic fee rate from slider
-                            const rate = feeRate;
-                            p._feePerKb = rate;
-                            p.getFeePerKb = async () => rate;
-                            p.getFeeRate = async () => ({ mine: rate, relay: rate });
+            // Use dynamic fee rate from slider
+            const rate = feeRate;
+            p._feePerKb = rate;
+            p.getFeePerKb = async () => rate;
+            p.getFeeRate = async () => ({ mine: rate, relay: rate });
 
-                            // Override sendRawTransaction for WhatsOnChain (shows unconfirmed txs)
-                            p.sendRawTransaction = async function (txHex) {
-                                const txBytes = txHex.length / 2;
-                                const estimatedFee = Math.ceil(txBytes * rate / 1000);
-                                addLog(`Broadcasting ${txBytes} bytes, ~${estimatedFee} sat fee`);
-                                const url = 'https://api.whatsonchain.com/v1/bsv/main/tx/raw';
-                                const response = await fetch(url, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ txhex: txHex })
-                                });
-                                const result = await response.text();
-                                if (!response.ok) {
-                                    throw new Error(`WOC Error ${response.status}: ${result}`);
-                                }
-                                return result.replace(/^"|"$/g, '');
-                            };
+            // Override sendRawTransaction for WhatsOnChain (shows unconfirmed txs)
+            p.sendRawTransaction = async function (txHex) {
+                const txBytes = txHex.length / 2;
+                const estimatedFee = Math.ceil(txBytes * rate / 1000);
+                addLog(`Broadcasting ${txBytes} bytes, ~${estimatedFee} sat fee`);
+                const url = 'https://api.whatsonchain.com/v1/bsv/main/tx/raw';
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ txhex: txHex })
+                });
+                const result = await response.text();
+                if (!response.ok) {
+                    throw new Error(`WOC Error ${response.status}: ${result}`);
+                }
+                return result.replace(/^"|"$/g, '');
+            };
 
-                            return p;
-                        }
+            return p;
+        }
 
 
 
-                        function decodeBase64(encodedData) {
-                            try {
-                                return atob(encodedData);
-                            } catch (e) {
-                                return encodedData;
-                            }
-                        }
+        function decodeBase64(encodedData) {
+            try {
+                return atob(encodedData);
+            } catch (e) {
+                return encodedData;
+            }
+        }
 
-                        async function refreshWallet() {
-                            const wif = document.getElementById('wif-input').value.trim();
-                            const balanceEl = document.getElementById('display-wallet-balance');
-                            const addrEl = document.getElementById('display-wallet-addr');
-                            const labelEl = document.getElementById('display-wallet-label');
+        async function refreshWallet() {
+            const wif = document.getElementById('wif-input').value.trim();
+            const balanceEl = document.getElementById('display-wallet-balance');
+            const addrEl = document.getElementById('display-wallet-addr');
+            const labelEl = document.getElementById('display-wallet-label');
 
-                            if (!wif) {
-                                balanceEl.innerText = "No Wallet";
-                                addrEl.innerText = "Enter WIF above";
-                                labelEl.style.display = 'none';
-                                return;
-                            }
+            if (!wif) {
+                balanceEl.innerText = "No Wallet";
+                addrEl.innerText = "Enter WIF above";
+                labelEl.style.display = 'none';
+                return;
+            }
 
-                            try {
-                                const { bsv } = ScryptBundle;
-                                const priv = bsv.PrivateKey.fromWIF(wif);
-                                const addr = priv.toAddress().toString();
-                                addrEl.innerText = addr.substring(0, 6) + '...' + addr.substring(addr.length - 6);
-                                addrEl.title = addr;
-                                labelEl.style.display = 'none';
+            try {
+                const { bsv } = ScryptBundle;
+                const priv = bsv.PrivateKey.fromWIF(wif);
+                const addr = priv.toAddress().toString();
+                addrEl.innerText = addr.substring(0, 6) + '...' + addr.substring(addr.length - 6);
+                addrEl.title = addr;
+                labelEl.style.display = 'none';
 
-                                balanceEl.innerText = "Loading...";
-                                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`);
-                                const data = await res.json();
-                                balanceEl.innerText = ((data.confirmed || 0) + (data.unconfirmed || 0)) + ' SAT';
-                            } catch (e) {
-                                console.error("Wallet Refresh Error:", e);
-                                balanceEl.innerText = "Error";
-                                addrEl.innerText = "Invalid WIF";
-                            }
-                        }
+                balanceEl.innerText = "Loading...";
+                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`);
+                const data = await res.json();
+                balanceEl.innerText = ((data.confirmed || 0) + (data.unconfirmed || 0)) + ' SAT';
+            } catch (e) {
+                console.error("Wallet Refresh Error:", e);
+                balanceEl.innerText = "Error";
+                addrEl.innerText = "Invalid WIF";
+            }
+        }
 
-                        function getWif() {
-                            const val = document.getElementById('wif-input').value.trim();
-                            if (!val) {
-                                alert("Please enter a WIF key to transact.");
-                                throw new Error("No WIF provided");
-                            }
-                            return val;
-                        }
+        function getWif() {
+            const val = document.getElementById('wif-input').value.trim();
+            if (!val) {
+                alert("Please enter a WIF key to transact.");
+                throw new Error("No WIF provided");
+            }
+            return val;
+        }
 
-                        async function startExecution() {
-                            const btn = document.getElementById('process-btn');
-                            btn.disabled = true;
-                            btn.innerText = "EXECUTING...";
+        async function startExecution() {
+            const btn = document.getElementById('process-btn');
+            btn.disabled = true;
+            btn.innerText = "EXECUTING...";
 
-                            const { TestWallet, bsv } = ScryptBundle;
-                            const wif = getWif();
-                            const priv = bsv.PrivateKey.fromWIF(wif);
-                            const provider = await getProvider();
-                            const signer = new TestWallet(priv, provider);
+            const { TestWallet, bsv } = ScryptBundle;
+            const wif = getWif();
+            const priv = bsv.PrivateKey.fromWIF(wif);
+            const provider = await getProvider();
+            const signer = new TestWallet(priv, provider);
 
-                            errorQueue = []; // Clear previous errors
+            errorQueue = []; // Clear previous errors
 
-                            try {
-                                for (const plot of plots) {
-                                    if (plot.modifiedIndices.size === 0 && plot.queuedRents.size === 0) continue;
+            try {
+                for (const plot of plots) {
+                    if (plot.modifiedIndices.size === 0 && plot.queuedRents.size === 0) continue;
 
-                                    // Mark cube as processing
-                                    markCubeProcessing(plot.index, true);
-                                    addLog(`Processing Plot ${plot.index}...`);
+                    // Mark cube as processing
+                    markCubeProcessing(plot.index, true);
+                    addLog(`Processing Plot ${plot.index}...`);
 
-                                    try {
-                                        await plot.instance.connect(signer);
+                    try {
+                        await plot.instance.connect(signer);
 
-                                        // 1. Handle Rents - each quadrant is a separate TX
-                                        if (plot.queuedRents.size > 0) {
-                                            const rentsToProcess = Array.from(plot.queuedRents);
-                                            const failedRents = [];
-                                            for (const qIdx of rentsToProcess) {
-                                                try {
-                                                    const txid = await executeRent(plot, qIdx, signer);
-                                                    addTxLog(`Rented Q${qIdx}`, plot.index, txid);
-                                                    plot.queuedRents.delete(qIdx);
-                                                    updateQueueUI();
-                                                    await new Promise(r => setTimeout(r, 500));
-                                                } catch (rentErr) {
-                                                    addLog(`Q${qIdx} failed: ${rentErr.message}`, "error");
-                                                    failedRents.push({ qIdx, error: rentErr.message });
-                                                }
-                                            }
-                                            // Only clear visual selection for successful rents
-                                            if (plot.queuedRents.size === 0) {
-                                                // All handled
-                                            }
-                                            updateSelectionOverlay();
-                                            // Add failed rents to error queue for retry
-                                            if (failedRents.length > 0) {
-                                                errorQueue.push({
-                                                    plotIndex: plot.index,
-                                                    type: 'RENT',
-                                                    failedQuadrants: failedRents,
-                                                    message: `${failedRents.length} quadrant(s) failed`
-                                                });
-                                            }
-                                        }
-
-                                        // 2. Handle Pixels
-                                        const list = Array.from(plot.modifiedIndices);
-                                        const batches = Math.ceil(list.length / 30);
-                                        for (let i = 0; i < batches; i++) {
-                                            const batch = list.slice(i * 30, (i + 1) * 30);
-                                            const txid = await executeBatch(plot, batch, signer);
-                                            addTxLog(`Updated ${batch.length}px`, plot.index, txid);
-                                            await new Promise(r => setTimeout(r, 500));
-                                        }
-
-                                        markCubeProcessing(plot.index, false);
-                                    } catch (plotError) {
-                                        addLog(`Plot ${plot.index} Error: ${plotError.message}`, "error");
-                                        // Only add to error queue if there's still work to do
-                                        if (plot.queuedRents.size > 0 || plot.modifiedIndices.size > 0) {
-                                            errorQueue.push({
-                                                plotIndex: plot.index,
-                                                type: plot.queuedRents.size > 0 ? 'RENT' : 'PX',
-                                                message: plotError.message
-                                            });
-                                        }
-                                        markCubeProcessing(plot.index, false, true);
-                                    }
-
-                                    markCubeProcessing(plot.index, false);
-                                    updateQueueUI();
-                                }
-
-                                // Retry errors with new head
-                                if (errorQueue.length > 0) {
-                                    addLog(`Retrying ${errorQueue.length} failed plots with fresh heads...`);
-                                    await retryErrorQueue(signer, provider);
-                                }
-
-                                addLog("Execution complete!", "success");
-                                await refreshWallet();
-                            } catch (e) {
-                                addLog(`Execution Error: ${e.message}`, "error");
-                            } finally {
-                                btn.disabled = false;
-                                btn.innerText = "EXECUTE";
-                                updateQueueUI();
-                            }
-                        }
-
-                        function markCubeProcessing(plotIdx, processing, isError = false) {
-                            const cubes = document.querySelectorAll('.queue-cube');
-                            cubes.forEach(cube => {
-                                if (cube.querySelector('.plot-num')?.textContent === String(plotIdx)) {
-                                    cube.classList.toggle('processing', processing);
-                                    if (isError) cube.classList.add('error');
-                                }
-                            });
-                        }
-
-                        async function retryErrorQueue(signer, provider) {
-                            const { PixelPlot28, bsv } = ScryptBundle;
-                            const errorsToRetry = [...errorQueue];
-                            errorQueue = [];
-
-                            for (const err of errorsToRetry) {
-                                const plot = plots[err.plotIndex];
-                                addLog(`Finding new head for Plot ${err.plotIndex}...`);
-
+                        // 1. Handle Rents - each quadrant is a separate TX
+                        if (plot.queuedRents.size > 0) {
+                            const rentsToProcess = Array.from(plot.queuedRents);
+                            const failedRents = [];
+                            for (const qIdx of rentsToProcess) {
                                 try {
-                                    // Find new head
-                                    const newHead = await findHead(plot.genesisId, 0);
-                                    if (newHead !== plot.headId) {
-                                        plot.headId = newHead;
-                                        const tx = await provider.getTransaction(newHead);
-                                        plot.instance = PixelPlot28.fromTx(tx, 0);
-                                        addLog(`Found new head: ${newHead.substring(0, 10)}...`);
-                                    }
-
-                                    await plot.instance.connect(signer);
-
-                                    if (err.type === 'RENT' && plot.queuedRents.size > 0) {
-                                        const rentsToProcess = Array.from(plot.queuedRents);
-                                        const stillFailed = [];
-                                        for (const qIdx of rentsToProcess) {
-                                            try {
-                                                const txid = await executeRent(plot, qIdx, signer);
-                                                addTxLog(`Retry Rented Q${qIdx}`, plot.index, txid);
-                                                plot.queuedRents.delete(qIdx);
-                                            } catch (rentErr) {
-                                                // Check if it's "already rented" - don't retry these
-                                                if (rentErr.message.includes('already rented')) {
-                                                    addLog(`Q${qIdx} already rented, skipping`, "error");
-                                                    plot.queuedRents.delete(qIdx);
-                                                } else {
-                                                    stillFailed.push(qIdx);
-                                                    addLog(`Q${qIdx} retry failed: ${rentErr.message}`, "error");
-                                                }
-                                            }
-                                        }
-                                        if (plot.queuedRents.size === 0) {
-                                            updateSelectionOverlay();
-                                        }
-                                        if (stillFailed.length > 0) {
-                                            errorQueue.push({
-                                                plotIndex: err.plotIndex,
-                                                type: 'RENT',
-                                                message: `${stillFailed.length} quadrant(s) still failing`
-                                            });
-                                        }
-                                    } else if (plot.modifiedIndices.size > 0) {
-                                        const list = Array.from(plot.modifiedIndices);
-                                        const batches = Math.ceil(list.length / 30);
-                                        for (let i = 0; i < batches; i++) {
-                                            const batch = list.slice(i * 30, (i + 1) * 30);
-                                            const txid = await executeBatch(plot, batch, signer);
-                                            addTxLog(`Retry Updated ${batch.length}px`, plot.index, txid);
-                                        }
-                                    }
-
-                                    if (plot.queuedRents.size === 0 && plot.modifiedIndices.size === 0) {
-                                        addLog(`Plot ${err.plotIndex} retry complete`, "success");
-                                    }
-                                } catch (retryErr) {
-                                    addLog(`Plot ${err.plotIndex} retry failed: ${retryErr.message}`, "error");
-                                    errorQueue.push(err);
+                                    const txid = await executeRent(plot, qIdx, signer);
+                                    addTxLog(`Rented Q${qIdx}`, plot.index, txid);
+                                    plot.queuedRents.delete(qIdx);
+                                    updateQueueUI();
+                                    await new Promise(r => setTimeout(r, 500));
+                                } catch (rentErr) {
+                                    addLog(`Q${qIdx} failed: ${rentErr.message}`, "error");
+                                    failedRents.push({ qIdx, error: rentErr.message });
                                 }
                             }
-                            updateQueueUI();
-                        }
-
-                        async function executeRent(plot, qIdx, signer) {
-                            const { bsv, PubKeyHash, toByteString, PixelPlot28 } = ScryptBundle;
-                            const wif = getWif();
-                            const priv = bsv.PrivateKey.fromWIF(wif);
-                            const pkh = priv.toAddress().hashBuffer.toString('hex');
-
-                            const numBlocks = BigInt(rentPeriod);
-                            const cost = numBlocks * plot.instance.rentPricePerBlock;
-
-                            addLog(`Renting Plot ${plot.index} Q${qIdx} for ${rentPeriod} blocks (${cost} sats)`);
-
-                            // Use static builder
-                            plot.instance.bindTxBuilder('rent', PixelPlot28.buildTxForRent);
-
-                            const comment = document.getElementById('tx-comment').value.trim();
-                            const opReturnData = `RENT_Q${qIdx}_P${plot.index}_${rentPeriod}BLK${comment ? ' | ' + comment : ''}`;
-
-                            const txResult = await plot.instance.methods.rent(
-                                BigInt(qIdx),
-                                PubKeyHash(toByteString(pkh)),
-                                numBlocks,
-                                toByteString(opReturnData, true),
-                                {
-                                    changeAddress: priv.toAddress(),
-                                    lockTime: currentBlockHeight
-                                }
-                            );
-
-                            plot.instance = txResult.next ? txResult.next.instance : plot.instance;
-                            plot.headId = txResult.tx.id;
-
-                            return txResult.tx.id;
-                        }
-
-                        async function executeBatch(plot, list, signer) {
-                            const { bsv, toByteString, PixelPlot28 } = ScryptBundle;
-                            const wif = getWif();
-                            const priv = bsv.PrivateKey.fromWIF(wif);
-
-                            const updates = list.map(idx => ({
-                                index: BigInt(idx),
-                                color: BigInt(currentPixels[getGlobalIdxFromLocal(plot, idx)])
-                            }));
-                            const numUpdates = updates.length;
-                            while (updates.length < 30) updates.push({ index: 0n, color: 0n });
-
-                            addLog(`Updating ${numUpdates} pixels on Plot ${plot.index}...`);
-
-                            // Use static builder
-                            plot.instance.bindTxBuilder('updatePixels', PixelPlot28.buildTxForUpdatePixels);
-
-                            const comment = document.getElementById('tx-comment').value.trim();
-                            const opReturnData = `UPDATE_${numUpdates}PX_PLOT${plot.index}${comment ? ' | ' + comment : ''}`;
-
-                            const txResult = await plot.instance.methods.updatePixels(
-                                updates,
-                                BigInt(numUpdates),
-                                toByteString(opReturnData, true),
-                                {
-                                    changeAddress: priv.toAddress(),
-                                    lockTime: currentBlockHeight
-                                }
-                            );
-
-                            plot.instance = txResult.next ? txResult.next.instance : plot.instance;
-                            plot.headId = txResult.tx.id;
-
-                            list.forEach(idx => {
-                                plot.originalPixels[idx] = currentPixels[getGlobalIdxFromLocal(plot, idx)];
-                                plot.modifiedIndices.delete(idx);
-                            });
-                            updateQueueUI();
-
-                            return txResult.tx.id;
-                        }
-
-                        function getGlobalIdxFromLocal(plot, localIdx) {
-                            const gridIdx = plots.indexOf(plot);
-                            const plotRow = Math.floor(gridIdx / 7);
-                            const plotCol = gridIdx % 7;
-
-                            const localY = Math.floor(localIdx / 28);
-                            const localX = localIdx % 28;
-                            const globalY = plotRow * 28 + localY;
-                            const globalX = plotCol * 28 + localX;
-                            return globalY * 196 + globalX;
-                        }
-
-                        function bigintToLEHex(n, bytesCount) {
-                            // Ensure we handle negative bigints (though they shouldn't be negative in our logic anymore)
-                            // but for safety with bit 3919:
-                            let hex = n.toString(16).replace('-', '');
-                            if (hex.length % 2 !== 0) hex = '0' + hex;
-
-                            const parts = [];
-                            for (let i = 0; i < hex.length; i += 2) {
-                                parts.push(hex.substring(i, i + 2));
+                            // Only clear visual selection for successful rents
+                            if (plot.queuedRents.size === 0) {
+                                // All handled
                             }
-                            parts.reverse();
-                            let res = parts.join('');
-                            return res.padEnd(bytesCount * 2, '0').slice(0, bytesCount * 2);
-                        }
-
-                        function resetAll() {
-                            plots.forEach(plot => {
-                                plot.modifiedIndices.forEach(localIdx => {
-                                    const globalIdx = getGlobalIdxFromLocal(plot, localIdx);
-                                    // Reset pixel data
-                                    currentPixels[globalIdx] = plot.originalPixels[localIdx];
-                                });
-                                plot.modifiedIndices.clear();
-                                plot.queuedRents.clear();
-                            });
-
-                            // Redraw everything
-                            requestAnimationFrame(redrawGrid);
                             updateSelectionOverlay();
-
-                            errorQueue = [];
-                            hideRentInfo();
-                            updateQueueUI();
-                            addLog("All pending changes reset.");
+                            // Add failed rents to error queue for retry
+                            if (failedRents.length > 0) {
+                                errorQueue.push({
+                                    plotIndex: plot.index,
+                                    type: 'RENT',
+                                    failedQuadrants: failedRents,
+                                    message: `${failedRents.length} quadrant(s) failed`
+                                });
+                            }
                         }
 
-                        function applySettings() {
-                            refreshWallet();
-                            addLog("Wallet settings updated.", "success");
+                        // 2. Handle Pixels
+                        const list = Array.from(plot.modifiedIndices);
+                        const batches = Math.ceil(list.length / 30);
+                        for (let i = 0; i < batches; i++) {
+                            const batch = list.slice(i * 30, (i + 1) * 30);
+                            const txid = await executeBatch(plot, batch, signer);
+                            addTxLog(`Updated ${batch.length}px`, plot.index, txid);
+                            await new Promise(r => setTimeout(r, 500));
                         }
+
+                        markCubeProcessing(plot.index, false);
+                    } catch (plotError) {
+                        addLog(`Plot ${plot.index} Error: ${plotError.message}`, "error");
+                        // Only add to error queue if there's still work to do
+                        if (plot.queuedRents.size > 0 || plot.modifiedIndices.size > 0) {
+                            errorQueue.push({
+                                plotIndex: plot.index,
+                                type: plot.queuedRents.size > 0 ? 'RENT' : 'PX',
+                                message: plotError.message
+                            });
+                        }
+                        markCubeProcessing(plot.index, false, true);
+                    }
+
+                    markCubeProcessing(plot.index, false);
+                    updateQueueUI();
+                }
+
+                // Retry errors with new head
+                if (errorQueue.length > 0) {
+                    addLog(`Retrying ${errorQueue.length} failed plots with fresh heads...`);
+                    await retryErrorQueue(signer, provider);
+                }
+
+                addLog("Execution complete!", "success");
+                await refreshWallet();
+            } catch (e) {
+                addLog(`Execution Error: ${e.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "EXECUTE";
+                updateQueueUI();
+            }
+        }
+
+        function markCubeProcessing(plotIdx, processing, isError = false) {
+            const cubes = document.querySelectorAll('.queue-cube');
+            cubes.forEach(cube => {
+                if (cube.querySelector('.plot-num')?.textContent === String(plotIdx)) {
+                    cube.classList.toggle('processing', processing);
+                    if (isError) cube.classList.add('error');
+                }
+            });
+        }
+
+        async function retryErrorQueue(signer, provider) {
+            const { PixelPlot28, bsv } = ScryptBundle;
+            const errorsToRetry = [...errorQueue];
+            errorQueue = [];
+
+            for (const err of errorsToRetry) {
+                const plot = plots[err.plotIndex];
+                addLog(`Finding new head for Plot ${err.plotIndex}...`);
+
+                try {
+                    // Find new head
+                    const newHead = await findHead(plot.genesisId, 0);
+                    if (newHead !== plot.headId) {
+                        plot.headId = newHead;
+                        const tx = await provider.getTransaction(newHead);
+                        plot.instance = PixelPlot28.fromTx(tx, 0);
+                        addLog(`Found new head: ${newHead.substring(0, 10)}...`);
+                    }
+
+                    await plot.instance.connect(signer);
+
+                    if (err.type === 'RENT' && plot.queuedRents.size > 0) {
+                        const rentsToProcess = Array.from(plot.queuedRents);
+                        const stillFailed = [];
+                        for (const qIdx of rentsToProcess) {
+                            try {
+                                const txid = await executeRent(plot, qIdx, signer);
+                                addTxLog(`Retry Rented Q${qIdx}`, plot.index, txid);
+                                plot.queuedRents.delete(qIdx);
+                            } catch (rentErr) {
+                                // Check if it's "already rented" - don't retry these
+                                if (rentErr.message.includes('already rented')) {
+                                    addLog(`Q${qIdx} already rented, skipping`, "error");
+                                    plot.queuedRents.delete(qIdx);
+                                } else {
+                                    stillFailed.push(qIdx);
+                                    addLog(`Q${qIdx} retry failed: ${rentErr.message}`, "error");
+                                }
+                            }
+                        }
+                        if (plot.queuedRents.size === 0) {
+                            updateSelectionOverlay();
+                        }
+                        if (stillFailed.length > 0) {
+                            errorQueue.push({
+                                plotIndex: err.plotIndex,
+                                type: 'RENT',
+                                message: `${stillFailed.length} quadrant(s) still failing`
+                            });
+                        }
+                    } else if (plot.modifiedIndices.size > 0) {
+                        const list = Array.from(plot.modifiedIndices);
+                        const batches = Math.ceil(list.length / 30);
+                        for (let i = 0; i < batches; i++) {
+                            const batch = list.slice(i * 30, (i + 1) * 30);
+                            const txid = await executeBatch(plot, batch, signer);
+                            addTxLog(`Retry Updated ${batch.length}px`, plot.index, txid);
+                        }
+                    }
+
+                    if (plot.queuedRents.size === 0 && plot.modifiedIndices.size === 0) {
+                        addLog(`Plot ${err.plotIndex} retry complete`, "success");
+                    }
+                } catch (retryErr) {
+                    addLog(`Plot ${err.plotIndex} retry failed: ${retryErr.message}`, "error");
+                    errorQueue.push(err);
+                }
+            }
+            updateQueueUI();
+        }
+
+        async function executeRent(plot, qIdx, signer) {
+            const { bsv, PubKeyHash, toByteString, PixelPlot28 } = ScryptBundle;
+            const wif = getWif();
+            const priv = bsv.PrivateKey.fromWIF(wif);
+            const pkh = priv.toAddress().hashBuffer.toString('hex');
+
+            const numBlocks = BigInt(rentPeriod);
+            const cost = numBlocks * plot.instance.rentPricePerBlock;
+
+            addLog(`Renting Plot ${plot.index} Q${qIdx} for ${rentPeriod} blocks (${cost} sats)`);
+
+            // Use static builder
+            plot.instance.bindTxBuilder('rent', PixelPlot28.buildTxForRent);
+
+            const comment = document.getElementById('tx-comment').value.trim();
+            const opReturnData = `RENT_Q${qIdx}_P${plot.index}_${rentPeriod}BLK${comment ? ' | ' + comment : ''}`;
+
+            const txResult = await plot.instance.methods.rent(
+                BigInt(qIdx),
+                PubKeyHash(toByteString(pkh)),
+                numBlocks,
+                toByteString(opReturnData, true),
+                {
+                    changeAddress: priv.toAddress(),
+                    lockTime: currentBlockHeight
+                }
+            );
+
+            plot.instance = txResult.next ? txResult.next.instance : plot.instance;
+            plot.headId = txResult.tx.id;
+
+            return txResult.tx.id;
+        }
+
+        async function executeBatch(plot, list, signer) {
+            const { bsv, toByteString, PixelPlot28 } = ScryptBundle;
+            const wif = getWif();
+            const priv = bsv.PrivateKey.fromWIF(wif);
+
+            const updates = list.map(idx => ({
+                index: BigInt(idx),
+                color: BigInt(currentPixels[getGlobalIdxFromLocal(plot, idx)])
+            }));
+            const numUpdates = updates.length;
+            while (updates.length < 30) updates.push({ index: 0n, color: 0n });
+
+            addLog(`Updating ${numUpdates} pixels on Plot ${plot.index}...`);
+
+            // Use static builder
+            plot.instance.bindTxBuilder('updatePixels', PixelPlot28.buildTxForUpdatePixels);
+
+            const comment = document.getElementById('tx-comment').value.trim();
+            const opReturnData = `UPDATE_${numUpdates}PX_PLOT${plot.index}${comment ? ' | ' + comment : ''}`;
+
+            const txResult = await plot.instance.methods.updatePixels(
+                updates,
+                BigInt(numUpdates),
+                toByteString(opReturnData, true),
+                {
+                    changeAddress: priv.toAddress(),
+                    lockTime: currentBlockHeight
+                }
+            );
+
+            plot.instance = txResult.next ? txResult.next.instance : plot.instance;
+            plot.headId = txResult.tx.id;
+
+            list.forEach(idx => {
+                plot.originalPixels[idx] = currentPixels[getGlobalIdxFromLocal(plot, idx)];
+                plot.modifiedIndices.delete(idx);
+            });
+            updateQueueUI();
+
+            return txResult.tx.id;
+        }
+
+        function getGlobalIdxFromLocal(plot, localIdx) {
+            const gridIdx = plots.indexOf(plot);
+            const plotRow = Math.floor(gridIdx / 7);
+            const plotCol = gridIdx % 7;
+
+            const localY = Math.floor(localIdx / 28);
+            const localX = localIdx % 28;
+            const globalY = plotRow * 28 + localY;
+            const globalX = plotCol * 28 + localX;
+            return globalY * 196 + globalX;
+        }
+
+        function bigintToLEHex(n, bytesCount) {
+            // Ensure we handle negative bigints (though they shouldn't be negative in our logic anymore)
+            // but for safety with bit 3919:
+            let hex = n.toString(16).replace('-', '');
+            if (hex.length % 2 !== 0) hex = '0' + hex;
+
+            const parts = [];
+            for (let i = 0; i < hex.length; i += 2) {
+                parts.push(hex.substring(i, i + 2));
+            }
+            parts.reverse();
+            let res = parts.join('');
+            return res.padEnd(bytesCount * 2, '0').slice(0, bytesCount * 2);
+        }
+
+        function resetAll() {
+            plots.forEach(plot => {
+                plot.modifiedIndices.forEach(localIdx => {
+                    const globalIdx = getGlobalIdxFromLocal(plot, localIdx);
+                    // Reset pixel data
+                    currentPixels[globalIdx] = plot.originalPixels[localIdx];
+                });
+                plot.modifiedIndices.clear();
+                plot.queuedRents.clear();
+            });
+
+            // Redraw everything
+            requestAnimationFrame(redrawGrid);
+            updateSelectionOverlay();
+
+            errorQueue = [];
+            hideRentInfo();
+            updateQueueUI();
+            addLog("All pending changes reset.");
+        }
+
+        function applySettings() {
+            refreshWallet();
+            addLog("Wallet settings updated.", "success");
+        }
     </script>
 </body>
 

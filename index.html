@@ -1119,6 +1119,14 @@
             </div>
 
             <div id="rent-options" style="display:none;">
+                <label style="font-size:10px; color: var(--text-dim); display:block; margin-bottom:4px">TOOL</label>
+                <div class="mode-switch" style="margin-bottom: 10px; padding: 2px;">
+                    <button class="mode-btn" id="rent-tool-interact" style="font-size: 10px; padding: 4px;"
+                        onclick="setTool('interact')">SELECT</button>
+                    <button class="mode-btn active" id="rent-tool-hand" style="font-size: 10px; padding: 4px;"
+                        onclick="setTool('hand')">DRAG</button>
+                </div>
+
                 <label style="font-size:10px; color: var(--text-dim); display:block; margin-bottom:4px">RENT
                     PERIOD</label>
                 <div class="rent-period-selector">
@@ -1130,6 +1138,14 @@
             </div>
 
             <div id="history-options" style="display:none;">
+                <label style="font-size:10px; color: var(--text-dim); display:block; margin-bottom:4px">TOOL</label>
+                <div class="mode-switch" style="margin-bottom: 10px; padding: 2px;">
+                    <button class="mode-btn" id="history-tool-interact" style="font-size: 10px; padding: 4px;"
+                        onclick="setTool('interact')">INFO</button>
+                    <button class="mode-btn active" id="history-tool-hand" style="font-size: 10px; padding: 4px;"
+                        onclick="setTool('hand')">DRAG</button>
+                </div>
+
                 <label style="font-size:10px; color: var(--text-dim); display:block; margin-bottom:4px">RETRIEVE
                     HISTORY</label>
                 <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:8px;">
@@ -2194,6 +2210,7 @@
             if (paletteCard) paletteCard.style.display = mode === 'paint' ? 'block' : 'none';
 
             updateQueueUI();
+            setTool(selectedTool);
             addLog(`Switched to ${mode.toUpperCase()} mode.`);
         }
 
@@ -2250,20 +2267,45 @@
 
         function selectColor(idx) {
             selectedColor = idx;
-            selectedTool = 'color';
-            document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
-            const swatches = document.querySelectorAll('.color-swatch');
-            if (swatches[idx]) swatches[idx].classList.add('selected');
-
-            updatePriceLabel();
-            addLog(`Switched to color #${idx}`);
+            setTool('color');
+            addLog(`Switched color to #${idx}`);
         }
 
         function selectHand() {
-            selectedTool = 'hand';
+            setTool('hand');
+        }
+
+        function setTool(tool) {
+            selectedTool = tool;
+
+            // Sync Palette UI (Paint mode)
             document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
-            document.getElementById('swatch-hand').classList.add('selected');
-            addLog("Hand tool selected (Pan/Drag)");
+            if (tool === 'hand') {
+                const h = document.getElementById('swatch-hand');
+                if (h) h.classList.add('selected');
+            } else {
+                // Default action for color mode
+                const sw = document.querySelectorAll('.color-swatch');
+                if (sw[selectedColor]) sw[selectedColor].classList.add('selected');
+            }
+
+            // Sync Rent Tool UI
+            const rHand = document.getElementById('rent-tool-hand');
+            const rSelect = document.getElementById('rent-tool-interact');
+            if (rHand && rSelect) {
+                rHand.classList.toggle('active', tool === 'hand');
+                rSelect.classList.toggle('active', tool !== 'hand');
+            }
+
+            // Sync History Tool UI
+            const hHand = document.getElementById('history-tool-hand');
+            const hSelect = document.getElementById('history-tool-interact');
+            if (hHand && hSelect) {
+                hHand.classList.toggle('active', tool === 'hand');
+                hSelect.classList.toggle('active', tool !== 'hand');
+            }
+
+            updatePriceLabel();
         }
 
         function updatePriceLabel() {

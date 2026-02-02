@@ -1481,20 +1481,16 @@
                                 let isOpReturn = false;
                                 let data = "";
 
-                                // Method 1: safe data out
-                                if (out.script.isSafeDataOut && out.script.isSafeDataOut()) {
+                                // Universal OP_RETURN data extractor
+                                if (out.script.isSafeDataOut?.() || out.script.toASM().startsWith('OP_RETURN')) {
                                     isOpReturn = true;
-                                    data = out.script.chunks[1].buf?.toString('utf8') || "";
-                                    console.log(`Plot ${plot.index}: Found safeDataOut: ${data}`);
-                                }
-                                // Method 2: check ASM
-                                else if (out.script.toASM().startsWith('OP_RETURN')) {
-                                    isOpReturn = true;
-                                    console.log(`Plot ${plot.index}: Found OP_RETURN ASM: ${out.script.toASM()}`);
-                                    // Try to decode chunks
-                                    if (out.script.chunks && out.script.chunks.length > 1) {
-                                        data = out.script.chunks[1].buf?.toString('utf8') || "";
-                                        console.log(`Plot ${plot.index}: Extracted data from chunks: ${data}`);
+                                    // Find largest data chunk
+                                    const dataChunk = out.script.chunks.find(c => c.buf && c.len > 0);
+                                    if (dataChunk) {
+                                        data = dataChunk.buf.toString('utf8');
+                                        console.log(`Plot ${plot.index}: Found OP_RETURN data: "${data}"`);
+                                    } else {
+                                        console.log(`Plot ${plot.index}: OP_RETURN detected but no data chunk found. Chunks: ${out.script.chunks.length}`);
                                     }
                                 }
 

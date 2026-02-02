@@ -2492,10 +2492,20 @@
                     const exp = Number(plot.instance.rentEnds[q]);
                     if (exp > currentBlockHeight) {
                         let comment = "";
-                        // If the head transaction was a rent for this specific quadrant, show its comment
+                        const cacheKey = `rent_comment_${plot.index}_${q}_${exp}`;
+
+                        // 1. Try to get from current head OpReturn
                         if (plot.lastOpReturn && plot.lastOpReturn.startsWith(`RENT_Q${q}_`)) {
                             comment = plot.lastComment || "";
+                            // Cache it for later (e.g. after painting when head changes)
+                            if (comment) localStorage.setItem(cacheKey, comment);
                         }
+
+                        // 2. If not in head, try cache
+                        if (!comment) {
+                            comment = localStorage.getItem(cacheKey) || "";
+                        }
+
                         plot.activeRents.push({
                             qIdx: q,
                             blocksLeft: exp - currentBlockHeight,

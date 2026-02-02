@@ -1485,21 +1485,24 @@
                                 if (out.script.isSafeDataOut && out.script.isSafeDataOut()) {
                                     isOpReturn = true;
                                     data = out.script.chunks[1].buf?.toString('utf8') || "";
+                                    console.log(`Plot ${plot.index}: Found safeDataOut: ${data}`);
                                 }
                                 // Method 2: check ASM
                                 else if (out.script.toASM().startsWith('OP_RETURN')) {
                                     isOpReturn = true;
+                                    console.log(`Plot ${plot.index}: Found OP_RETURN ASM: ${out.script.toASM()}`);
                                     // Try to decode chunks
                                     if (out.script.chunks && out.script.chunks.length > 1) {
                                         data = out.script.chunks[1].buf?.toString('utf8') || "";
+                                        console.log(`Plot ${plot.index}: Extracted data from chunks: ${data}`);
                                     }
-                                    // Fallback: parse ASM? (LESS RELIABLE)
                                 }
 
                                 if (isOpReturn && data) {
                                     plot.lastOpReturn = data;
                                     if (data.includes('|')) {
                                         plot.lastComment = data.split('|')[1].trim();
+                                        console.log(`Plot ${plot.index}: Parsed comment: ${plot.lastComment}`);
                                     }
                                     break; // Found the op return
                                 }
@@ -1508,15 +1511,21 @@
 
                         // Immediate Cache Sync for Rentals (Fresh Load Support)
                         if (plot.instance && plot.instance.rentEnds) {
+                            console.log(`Plot ${plot.index}: Checking rent cache logic. rentEnds: ${plot.instance.rentEnds}`);
                             for (let q = 0; q < 4; q++) {
                                 const exp = Number(plot.instance.rentEnds[q]);
-                                if (exp > 0 && plot.lastOpReturn && plot.lastOpReturn.startsWith(`RENT_Q${q}_`)) {
+                                const expectedPrefix = `RENT_Q${q}_`;
+                                if (exp > 0 && plot.lastOpReturn && plot.lastOpReturn.startsWith(expectedPrefix)) {
                                     const cacheKey = `rent_comment_${plot.index}_${q}_${exp}`;
                                     const comment = plot.lastComment || "";
                                     if (comment) {
                                         localStorage.setItem(cacheKey, comment);
-                                        console.log(`Cached comment for Plot ${plot.index} Q${q}: ${comment}`);
+                                        console.log(`SUCCESS: Cached comment for Plot ${plot.index} Q${q}: ${comment} (Key: ${cacheKey})`);
+                                    } else {
+                                        console.log(`Plot ${plot.index}: Rent metadata found for Q${q} but no comment to cache.`);
                                     }
+                                } else if (plot.lastOpReturn && plot.lastOpReturn.startsWith('RENT_')) {
+                                    console.log(`Plot ${plot.index}: OpReturn '${plot.lastOpReturn}' did not match expected Q${q} prefix '${expectedPrefix}'`);
                                 }
                             }
                         }

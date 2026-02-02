@@ -269,8 +269,8 @@
 
         .palette {
             display: grid;
-            grid-template-columns: repeat(16, 1fr);
-            gap: 4px;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 6px;
         }
 
         .swatch {
@@ -345,7 +345,7 @@
             height: 320px;
             z-index: 1000;
             display: grid;
-            grid-template-columns: 300px minmax(300px, 1fr) minmax(300px, 1fr) 350px;
+            grid-template-columns: minmax(220px, 0.8fr) 1fr 1fr minmax(300px, 1fr);
             box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.8);
         }
 
@@ -483,6 +483,7 @@
             font-family: 'Fira Code', monospace;
             background: #020617;
             max-height: 260px;
+            min-width: 0;
         }
 
         .log-container h4 {
@@ -525,6 +526,7 @@
         .queue-panel {
             padding: 15px;
             overflow-y: auto;
+            min-width: 0;
         }
 
         .plot-group {
@@ -832,6 +834,7 @@
             gap: 10px;
             border-left: 1px solid var(--border-color);
             overflow-y: auto;
+            min-width: 0;
         }
 
         .mode-switch {
@@ -903,13 +906,14 @@
             }
 
             .bottom-shelf {
+                display: flex !important;
                 flex-direction: column;
                 position: fixed;
                 bottom: 0;
                 left: 0;
                 right: 0;
                 height: auto;
-                max-height: 50vh;
+                max-height: 60vh;
                 overflow-y: auto;
                 background: rgba(15, 23, 42, 0.95);
                 backdrop-filter: blur(20px);
@@ -1076,7 +1080,7 @@
         </div>
 
         <div
-            style="display: flex; flex-direction: column; padding: 15px; gap: 10px; border-right: 1px solid var(--border-color);">
+            style="display: flex; flex-direction: column; padding: 12px; gap: 8px; border-right: 1px solid var(--border-color); min-width: 0;">
             <div class="card" id="palette-card" style="padding: 0; border: none; background: transparent;">
                 <h3>PALETTE <span id="selected-price" style="color: var(--accent)">1 SAT</span></h3>
                 <div class="palette" id="palette"></div>

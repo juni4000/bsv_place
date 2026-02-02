@@ -1097,7 +1097,8 @@
 
         async function updateBlockHeight() {
             try {
-                const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/chain/info');
+                const url = 'https://api.whatsonchain.com/v1/bsv/main/chain/info';
+                const resp = await fetch(`/api/proxy?url=${encodeURIComponent(url)}&t=${Date.now()}`);
                 if (resp.ok) {
                     const data = await resp.json();
                     if (data.blocks > currentBlockHeight) {
@@ -1110,7 +1111,7 @@
         }
 
         function initPlotsMetadata() {
-            // 5x5 Grid with BSVAL Graffiti Image (25 plots)
+            // 7x7 Grid with BSVAL Graffiti Image (49 plots)
             // Shared init_id: BSVAL_GRAFFITI_3X3 (Legacy ID kept)
             // Row 0: 0, 1, 2, 9, 16
             // Row 1: 3, 4, 5, 10, 17
@@ -1118,251 +1119,55 @@
             // Row 3: 12, 13, 14, 15, 19
             // Row 4: 20, 21, 22, 23, 24
             const meta = [
-                {
-                    "index": 0,
-                    "owner": "1P4W5w2bL6wEmjrJfgUy37naivcXQduqNq",
-                    "txid": "8b4dc8af57b2974a413ec6fe99ff8a3e5ea34ca7045c39af5aac84e8fc340a40"
-                },
-                {
-                    "index": 1,
-                    "owner": "17FK3tdKqa5vD2VLFw9gECasDSVfPKKzgM",
-                    "txid": "a98637337a29306b9bf431586562898c6c09f5d1882615ddf45d46449f11ea5e"
-                },
-                {
-                    "index": 2,
-                    "owner": "114aQeouD8puU1m4QcTBXA7Zam8CYuGDDi",
-                    "txid": "1f868a883cfb2d5c008fa2689f442400a2898395b273250d2033604b67e267a6"
-                },
-                {
-                    "index": 9,
-                    "owner": "1HPU58vxvwr9gg2Fh6obvw7cedPVUpQacY",
-                    "txid": "3c3e5411cabc58a10ea958479318fe9e17c2fe7a372a6138b5b4214c2f5e9601"
-                },
-                {
-                    "index": 16,
-                    "owner": "1CTrUetoWrEGXLSzCcL3CXwU7gF7g2PWE4",
-                    "txid": "13eb0148af862427c9414b89897587d3b85f4ae34c422c87a6a7bb9a6fe3f45a"
-                },
-                {
-                    "index": 25,
-                    "owner": "1LR1SG389pvW2cdeyX5tZcRn6ZeQEQD7KH",
-                    "txid": "cc72867dea2918cd4ddfc2bb9904151b55e5934a76439519dea1df3599dc05e7"
-                },
-                {
-                    "index": 36,
-                    "owner": "1QAVYFVFyMrjdzinNdT5NcQBnejisiXDDV",
-                    "txid": "83676b887d9d5e9042c1e43a2fc1cf1656b34a722996300cde16a3a57b7621d1"
-                },
-                {
-                    "index": 3,
-                    "owner": "1PGNR2KMikwwN9m1rvNAgZBCBrZUr5eHbJ",
-                    "txid": "a93cb7d27575edde0fd5594669e23c0c526a4843e7b979fa4c7a64462e5cd2ad"
-                },
-                {
-                    "index": 4,
-                    "owner": "15pRFCaqTZZS1atfxyeJ9AAPK3fVYbuAAV",
-                    "txid": "269aabf8975efbaa7fbd5179c931b193ce147aa2a24bb6f9b95cc51a54258a23"
-                },
-                {
-                    "index": 5,
-                    "owner": "1Ab9TYd3ht1vXQMb3v64FY3iAkpowr7hJJ",
-                    "txid": "90c1f206a79cb760c35eee1478c5498c16881752e2aba6a5a73122bd54cc78a1"
-                },
-                {
-                    "index": 10,
-                    "owner": "1GfrZQHrv2o9CrPLW3t45j7ePGG1hvxB4r",
-                    "txid": "c71cde889be3c4a5a7336d1f5cfcc61bd84bf94565eb6691f9b9f7d20f025233"
-                },
-                {
-                    "index": 17,
-                    "owner": "17VYrhG27V2tMB3Jv9rmMHoDaV32BNmtre",
-                    "txid": "7794ffe1f5af636119c9cd12eb84d29561b4330d2a1ab212bb03d2a9a5965fc3"
-                },
-                {
-                    "index": 26,
-                    "owner": "173Q8MrfKG2SpSYLPSmwE8bx4zsPYaNE1z",
-                    "txid": "23b9f9050bba6cf726b4078a60e982b84279d30b7baaf574603aeda1ac2e1fd8"
-                },
-                {
-                    "index": 37,
-                    "owner": "1EDfN4gdL5Q9AgFXLCcgRBsBDf37he8Rm2",
-                    "txid": "7269446f6d7edbc9cc60e66c668e5ea3b6d34a9e9f4c6921515658a06dfa893b"
-                },
-                {
-                    "index": 6,
-                    "owner": "1GQX8HfxPRREEbCjy3Vbp57CyfhHdo3Yes",
-                    "txid": "423075e2f3e3cdb2a641c15f37fe67302a647d24f51bba5c0bd4d5cbf77541bf"
-                },
-                {
-                    "index": 7,
-                    "owner": "13gqJQv6srBua5MAKwVK6jLRKqnQivQpju",
-                    "txid": "a246929ce2377e5400f4afc86e455ab2adf8b6cc3e1782395c76a4619471ed65"
-                },
-                {
-                    "index": 8,
-                    "owner": "16p13WZgWGqENoFvoaQ1kexT2ZEXBYfw3b",
-                    "txid": "2b030ed8604f99ac247983c24c3555d810126262c4a04493c03573bad84251f5"
-                },
-                {
-                    "index": 11,
-                    "owner": "13Q7EjhxxU79xwHCZSjx5BcRJPtwBHM1wi",
-                    "txid": "12a1ecc41fd973f7a62ed6646f624e8d03cfb4e29fba37a41b111ff670b1a9e9"
-                },
-                {
-                    "index": 18,
-                    "owner": "1J5m332nTUE1L1qHh6SLJyAzyRorcDAJsi",
-                    "txid": "390192516dbda540a856f4242303a8fd9131bee3a4b92088dabb2f1122f02d32"
-                },
-                {
-                    "index": 27,
-                    "owner": "1BH8cDuc6LLgkndxoTgnV1P6VHsnLMj123",
-                    "txid": "9e25e3e74428c10522c91b329c7694fe05f6478fb5735a48413172fa4442e0cb"
-                },
-                {
-                    "index": 38,
-                    "owner": "1MHnZFU1SaJ1pgHFZCQAMM3BQqZSm8EnzR",
-                    "txid": "a7cc04987982a2c11983efc41f40c5e7b626f9ba29576e41a713e03e57dd54b5"
-                },
-                {
-                    "index": 12,
-                    "owner": "121CH8s6r7xbS6SmPfbYY1M6k6HLxTP5D3",
-                    "txid": "459cc2e203f9e5d2220f922d01f59ed74a24d773430ceeb3da1d0f71999972ff"
-                },
-                {
-                    "index": 13,
-                    "owner": "19MB7X2DdWhuf8mYvi1QXPocdkivi726qX",
-                    "txid": "37d01fbe06f4c11448c6237afafeb34cd47a014a5ba56b7ddb4261789f840fa6"
-                },
-                {
-                    "index": 14,
-                    "owner": "1GqKQvHq7Yd127ZHZoQqod2hZsF8iDFneW",
-                    "txid": "f2664c289e5683876093fca4086e613d26e08a1354e9b472f7a355d2b54b7320"
-                },
-                {
-                    "index": 15,
-                    "owner": "1C1U2X9U74CVd1WQrFQianAbFrPtcTdCyE",
-                    "txid": "53b6724398fd8eed7d8c9375b5a4b81863a815f849892a02cecee5b14cac84b6"
-                },
-                {
-                    "index": 19,
-                    "owner": "13LrNQNfYo14i6w4wHJpq97VjEcm12Uuix",
-                    "txid": "23d777898c4be1b48b3af119f9517d0bd9efc4f5164c1979b416140414d5ab69"
-                },
-                {
-                    "index": 28,
-                    "owner": "17BU6J2bQUtf98nj3YP4L43aFhjCPAixDS",
-                    "txid": "72dd9af34257bbe9538fef3de169b387c3df87dc6c7d5c81ad2c6c7d67bc6217"
-                },
-                {
-                    "index": 39,
-                    "owner": "1H94vK88GPFEQ1kXN3zgkdM2sh5dxbUgAc",
-                    "txid": "5c3e2ec54837aa4f3c675ea95ecc8868abe341ecd30cde89ac6eae3880d29356"
-                },
-                {
-                    "index": 20,
-                    "owner": "1PJ2UJkiWrP3KtEQi8TrGtaZquipDAGF4Q",
-                    "txid": "76b73f9f11b0809358919756296a2fde01c01c3d5bd6fa2518a9e49f5bb949c8"
-                },
-                {
-                    "index": 21,
-                    "owner": "1CRUGtrHJ1jugxy5kG6V1Bv7YgowXHSRru",
-                    "txid": "7fa27c8a3c9fc57940b8f13d3edde5e0c9cf0806cad92dbc76b1def6075dc1a3"
-                },
-                {
-                    "index": 22,
-                    "owner": "1KjNE68uihpR2efpL2MiezaCykcctQGjr6",
-                    "txid": "e3e446d3b087758a75556af1d6d112fad96eeb231204b158b0d2105146669942"
-                },
-                {
-                    "index": 23,
-                    "owner": "1DXEArxYN2UwPAmFjSMg6bjPpafXzS4nt2",
-                    "txid": "8779822d2619953a1c5f4300d968e3eb756c46385ec73a91c0abffe2de35f328"
-                },
-                {
-                    "index": 24,
-                    "owner": "1M1DDEbvcJCnmvLUVqSENWX7qTsVCAxrpc",
-                    "txid": "370d02c32ee97ba0969ed3b4ffe86c630780fd9ff35f5cb1dd72a3e99d03313f"
-                },
-                {
-                    "index": 29,
-                    "owner": "1KdhFc8fy73gCJEg6gnKaB6EEvr3Y5EYUt",
-                    "txid": "bf8f0d3d0e86fab3f390991c988adc87fcadcb4e0419df3c42d17a661deed092"
-                },
-                {
-                    "index": 40,
-                    "owner": "1Bo4cGSVfR1bL2ouz37AC2ktGri1wC6XZq",
-                    "txid": "94c836af70190b699ecb18cf259f1d35f18d998d551e22610a356255f309e38c"
-                },
-                {
-                    "index": 30,
-                    "owner": "1M7Pr2eMNUZxTS4PUHCzfiJaUBt1wmC4x7",
-                    "txid": "d71393d6f28cbde94042ce0444f38c78075adb67980c5ff706fbd2c87b0c398b"
-                },
-                {
-                    "index": 31,
-                    "owner": "1AWbrPfUzkZ47j1HjcoQBiMtiJCXM3m3bT",
-                    "txid": "7f6e1620c349f292b0cfbdc05b715b7191b1aadaa63dc71c12871f91dab26daf"
-                },
-                {
-                    "index": 32,
-                    "owner": "1FjJdKdn1jS7PYdn7uZf1UKp6zp1oYU2bG",
-                    "txid": "9228a475e2d9f15a4d7a6df837500372e16c2c16014923163b47146bb5e13cb8"
-                },
-                {
-                    "index": 33,
-                    "owner": "17hD2jMZFXp8w9Uu1anPQNHPBgQ6dRJvv",
-                    "txid": "a04d5916433207d74f0bd0c3045c1d983b68db00078672f4bbfebf4cb080e0c1"
-                },
-                {
-                    "index": 34,
-                    "owner": "1LxCnT7jg6eFE7SX9nBaNvTvmjDYeBWvp1",
-                    "txid": "1f554e896f8ab2550adecb155b39d010781fe90c1d78db08d00315f8eff22fd6"
-                },
-                {
-                    "index": 35,
-                    "owner": "168nPQmMDXHF4SKyEsrkyLsLiLspYFUB2c",
-                    "txid": "6906e7146502b74529d480492e4c6ae5043325b8db81922a6332f9c3130aea9c"
-                },
-                {
-                    "index": 41,
-                    "owner": "1PgG2sJPuZbB7dngMyJNfa7xvcjEHytRuf",
-                    "txid": "70cb53d58f7e2f30eef7baa750c611d648e6e91e17275c9b5f8152b1ae544955"
-                },
-                {
-                    "index": 42,
-                    "owner": "19j8sJASHckHjSp9Y6kDJFrYYo4S6qGN25",
-                    "txid": "92ae1e1d43731cad802eac2f7feb143a03352027133fc4b9162f4e3256791ccd"
-                },
-                {
-                    "index": 43,
-                    "owner": "1P1RkyvvZL4DzBzHsF6cBqAQPs9xsyBDxc",
-                    "txid": "2dbbd2f4ccfd7651ae10528266dd9f10b0adac2e8bed88eae37eeb6265a9d3df"
-                },
-                {
-                    "index": 44,
-                    "owner": "1J1Ph1MTpqv1ePA11Y94cuje7xtb11FsXN",
-                    "txid": "05417a4b11133101b1813ffc165cb2b5bd6080fd7d0c57f2224e5ab1a49858d5"
-                },
-                {
-                    "index": 45,
-                    "owner": "12Qr6dpJf9kHYFHaxGkjWCyqVCZTeuaH6k",
-                    "txid": "6f73f5f7a8d677d45ded898874db2cecaf9825aaea52c0c3393cfbf5526773fa"
-                },
-                {
-                    "index": 46,
-                    "owner": "1GJzCN2zbQ9ff5BuEsoYRHZA1Nkh2EzbdL",
-                    "txid": "672aa3e340fdf93972554fc8c074d9d1a079da301cdd506ffa73401970a7e477"
-                },
-                {
-                    "index": 47,
-                    "owner": "1HyALrfXKx5f1Z3329W1DCPWNKGEYLP81f",
-                    "txid": "0030af45022d3ca434229a9e823adcccdef4c2e36a3f0943d3a2082a7680d4b4"
-                },
-                {
-                    "index": 48,
-                    "owner": "16f1arM1pHLeRqDzYzmLhdDkGsa6y6V8Az",
-                    "txid": "bd3ee53f2fccba4ce535489f13b2b18755a94d783de9612ed58e70691272fc12"
-                }
+                { "index": 0, "owner": "1P4W5w2bL6wEmjrJfgUy37naivcXQduqNq", "txid": "8b4dc8af57b2974a413ec6fe99ff8a3e5ea34ca7045c39af5aac84e8fc340a40" },
+                { "index": 1, "owner": "17FK3tdKqa5vD2VLFw9gECasDSVfPKKzgM", "txid": "a98637337a29306b9bf431586562898c6c09f5d1882615ddf45d46449f11ea5e" },
+                { "index": 2, "owner": "114aQeouD8puU1m4QcTBXA7Zam8CYuGDDi", "txid": "1f868a883cfb2d5c008fa2689f442400a2898395b273250d2033604b67e267a6" },
+                { "index": 3, "owner": "1PGNR2KMikwwN9m1rvNAgZBCBrZUr5eHbJ", "txid": "a93cb7d27575edde0fd5594669e23c0c526a4843e7b979fa4c7a64462e5cd2ad" },
+                { "index": 4, "owner": "15pRFCaqTZZS1atfxyeJ9AAPK3fVYbuAAV", "txid": "269aabf8975efbaa7fbd5179c931b193ce147aa2a24bb6f9b95cc51a54258a23" },
+                { "index": 5, "owner": "1Ab9TYd3ht1vXQMb3v64FY3iAkpowr7hJJ", "txid": "90c1f206a79cb760c35eee1478c5498c16881752e2aba6a5a73122bd54cc78a1" },
+                { "index": 6, "owner": "1GQX8HfxPRREEbCjy3Vbp57CyfhHdo3Yes", "txid": "423075e2f3e3cdb2a641c15f37fe67302a647d24f51bba5c0bd4d5cbf77541bf" },
+                { "index": 7, "owner": "13gqJQv6srBua5MAKwVK6jLRKqnQivQpju", "txid": "a246929ce2377e5400f4afc86e455ab2adf8b6cc3e1782395c76a4619471ed65" },
+                { "index": 8, "owner": "16p13WZgWGqENoFvoaQ1kexT2ZEXBYfw3b", "txid": "2b030ed8604f99ac247983c24c3555d810126262c4a04493c03573bad84251f5" },
+                { "index": 9, "owner": "1HPU58vxvwr9gg2Fh6obvw7cedPVUpQacY", "txid": "3c3e5411cabc58a10ea958479318fe9e17c2fe7a372a6138b5b4214c2f5e9601" },
+                { "index": 10, "owner": "1GfrZQHrv2o9CrPLW3t45j7ePGG1hvxB4r", "txid": "c71cde889be3c4a5a7336d1f5cfcc61bd84bf94565eb6691f9b9f7d20f025233" },
+                { "index": 11, "owner": "13Q7EjhxxU79xwHCZSjx5BcRJPtwBHM1wi", "txid": "12a1ecc41fd973f7a62ed6646f624e8d03cfb4e29fba37a41b111ff670b1a9e9" },
+                { "index": 12, "owner": "121CH8s6r7xbS6SmPfbYY1M6k6HLxTP5D3", "txid": "459cc2e203f9e5d2220f922d01f59ed74a24d773430ceeb3da1d0f71999972ff" },
+                { "index": 13, "owner": "19MB7X2DdWhuf8mYvi1QXPocdkivi726qX", "txid": "37d01fbe06f4c11448c6237afafeb34cd47a014a5ba56b7ddb4261789f840fa6" },
+                { "index": 14, "owner": "1GqKQvHq7Yd127ZHZoQqod2hZsF8iDFneW", "txid": "f2664c289e5683876093fca4086e613d26e08a1354e9b472f7a355d2b54b7320" },
+                { "index": 15, "owner": "1C1U2X9U74CVd1WQrFQianAbFrPtcTdCyE", "txid": "53b6724398fd8eed7d8c9375b5a4b81863a815f849892a02cecee5b14cac84b6" },
+                { "index": 16, "owner": "1CTrUetoWrEGXLSzCcL3CXwU7gF7g2PWE4", "txid": "13eb0148af862427c9414b89897587d3b85f4ae34c422c87a6a7bb9a6fe3f45a" },
+                { "index": 17, "owner": "17VYrhG27V2tMB3Jv9rmMHoDaV32BNmtre", "txid": "7794ffe1f5af636119c9cd12eb84d29561b4330d2a1ab212bb03d2a9a5965fc3" },
+                { "index": 18, "owner": "1J5m332nTUE1L1qHh6SLJyAzyRorcDAJsi", "txid": "390192516dbda540a856f4242303a8fd9131bee3a4b92088dabb2f1122f02d32" },
+                { "index": 19, "owner": "13LrNQNfYo14i6w4wHJpq97VjEcm12Uuix", "txid": "23d777898c4be1b48b3af119f9517d0bd9efc4f5164c1979b416140414d5ab69" },
+                { "index": 20, "owner": "1PJ2UJkiWrP3KtEQi8TrGtaZquipDAGF4Q", "txid": "76b73f9f11b0809358919756296a2fde01c01c3d5bd6fa2518a9e49f5bb949c8" },
+                { "index": 21, "owner": "1CRUGtrHJ1jugxy5kG6V1Bv7YgowXHSRru", "txid": "7fa27c8a3c9fc57940b8f13d3edde5e0c9cf0806cad92dbc76b1def6075dc1a3" },
+                { "index": 22, "owner": "1KjNE68uihpR2efpL2MiezaCykcctQGjr6", "txid": "e3e446d3b087758a75556af1d6d112fad96eeb231204b158b0d2105146669942" },
+                { "index": 23, "owner": "1DXEArxYN2UwPAmFjSMg6bjPpafXzS4nt2", "txid": "8779822d2619953a1c5f4300d968e3eb756c46385ec73a91c0abffe2de35f328" },
+                { "index": 24, "owner": "1M1DDEbvcJCnmvLUVqSENWX7qTsVCAxrpc", "txid": "370d02c32ee97ba0969ed3b4ffe86c630780fd9ff35f5cb1dd72a3e99d03313f" },
+                { "index": 25, "owner": "1LR1SG389pvW2cdeyX5tZcRn6ZeQEQD7KH", "txid": "cc72867dea2918cd4ddfc2bb9904151b55e5934a76439519dea1df3599dc05e7" },
+                { "index": 26, "owner": "173Q8MrfKG2SpSYLPSmwE8bx4zsPYaNE1z", "txid": "23b9f9050bba6cf726b4078a60e982b84279d30b7baaf574603aeda1ac2e1fd8" },
+                { "index": 27, "owner": "1BH8cDuc6LLgkndxoTgnV1P6VHsnLMj123", "txid": "9e25e3e74428c10522c91b329c7694fe05f6478fb5735a48413172fa4442e0cb" },
+                { "index": 28, "owner": "17BU6J2bQUtf98nj3YP4L43aFhjCPAixDS", "txid": "72dd9af34257bbe9538fef3de169b387c3df87dc6c7d5c81ad2c6c7d67bc6217" },
+                { "index": 29, "owner": "1KdhFc8fy73gCJEg6gnKaB6EEvr3Y5EYUt", "txid": "bf8f0d3d0e86fab3f390991c988adc87fcadcb4e0419df3c42d17a661deed092" },
+                { "index": 30, "owner": "1M7Pr2eMNUZxTS4PUHCzfiJaUBt1wmC4x7", "txid": "d71393d6f28cbde94042ce0444f38c78075adb67980c5ff706fbd2c87b0c398b" },
+                { "index": 31, "owner": "1AWbrPfUzkZ47j1HjcoQBiMtiJCXM3m3bT", "txid": "7f6e1620c349f292b0cfbdc05b715b7191b1aadaa63dc71c12871f91dab26daf" },
+                { "index": 32, "owner": "1FjJdKdn1jS7PYdn7uZf1UKp6zp1oYU2bG", "txid": "9228a475e2d9f15a4d7a6df837500372e16c2c16014923163b47146bb5e13cb8" },
+                { "index": 33, "owner": "17hD2jMZFXp8w9Uu1anPQNHPBgQ6dRJvv", "txid": "a04d5916433207d74f0bd0c3045c1d983b68db00078672f4bbfebf4cb080e0c1" },
+                { "index": 34, "owner": "1LxCnT7jg6eFE7SX9nBaNvTvmjDYeBWvp1", "txid": "1f554e896f8ab2550adecb155b39d010781fe90c1d78db08d00315f8eff22fd6" },
+                { "index": 35, "owner": "168nPQmMDXHF4SKyEsrkyLsLiLspYFUB2c", "txid": "6906e7146502b74529d480492e4c6ae5043325b8db81922a6332f9c3130aea9c" },
+                { "index": 36, "owner": "1QAVYFVFyMrjdzinNdT5NcQBnejisiXDDV", "txid": "83676b887d9d5e9042c1e43a2fc1cf1656b34a722996300cde16a3a57b7621d1" },
+                { "index": 37, "owner": "1EDfN4gdL5Q9AgFXLCcgRBsBDf37he8Rm2", "txid": "7269446f6d7edbc9cc60e66c668e5ea3b6d34a9e9f4c6921515658a06dfa893b" },
+                { "index": 38, "owner": "1MHnZFU1SaJ1pgHFZCQAMM3BQqZSm8EnzR", "txid": "a7cc04987982a2c11983efc41f40c5e7b626f9ba29576e41a713e03e57dd54b5" },
+                { "index": 39, "owner": "1H94vK88GPFEQ1kXN3zgkdM2sh5dxbUgAc", "txid": "5c3e2ec54837aa4f3c675ea95ecc8868abe341ecd30cde89ac6eae3880d29356" },
+                { "index": 40, "owner": "1Bo4cGSVfR1bL2ouz37AC2ktGri1wC6XZq", "txid": "94c836af70190b699ecb18cf259f1d35f18d998d551e22610a356255f309e38c" },
+                { "index": 41, "owner": "1PgG2sJPuZbB7dngMyJNfa7xvcjEHytRuf", "txid": "70cb53d58f7e2f30eef7baa750c611d648e6e91e17275c9b5f8152b1ae544955" },
+                { "index": 42, "owner": "19j8sJASHckHjSp9Y6kDJFrYYo4S6qGN25", "txid": "92ae1e1d43731cad802eac2f7feb143a03352027133fc4b9162f4e3256791ccd" },
+                { "index": 43, "owner": "1P1RkyvvZL4DzBzHsF6cBqAQPs9xsyBDxc", "txid": "2dbbd2f4ccfd7651ae10528266dd9f10b0adac2e8bed88eae37eeb6265a9d3df" },
+                { "index": 44, "owner": "1J1Ph1MTpqv1ePA11Y94cuje7xtb11FsXN", "txid": "05417a4b11133101b1813ffc165cb2b5bd6080fd7d0c57f2224e5ab1a49858d5" },
+                { "index": 45, "owner": "12Qr6dpJf9kHYFHaxGkjWCyqVCZTeuaH6k", "txid": "6f73f5f7a8d677d45ded898874db2cecaf9825aaea52c0c3393cfbf5526773fa" },
+                { "index": 46, "owner": "1GJzCN2zbQ9ff5BuEsoYRHZA1Nkh2EzbdL", "txid": "672aa3e340fdf93972554fc8c074d9d1a079da301cdd506ffa73401970a7e477" },
+                { "index": 47, "owner": "1HyALrfXKx5f1Z3329W1DCPWNKGEYLP81f", "txid": "0030af45022d3ca434229a9e823adcccdef4c2e36a3f0943d3a2082a7680d4b4" },
+                { "index": 48, "owner": "16f1arM1pHLeRqDzYzmLhdDkGsa6y6V8Az", "txid": "bd3ee53f2fccba4ce535489f13b2b18755a94d783de9612ed58e70691272fc12" }
             ];
             plots = meta.map(m => ({
                 index: m.index,
@@ -1412,51 +1217,46 @@
             addLog(`Following chains for ${targetPlots.length} plots...`);
             const headIds = targetPlots.map(p => p.headId);
             const currentHeads = await fetchLatestTxidsBulk(headIds);
+            console.log("Heads found:", currentHeads);
             targetPlots.forEach((p, i) => p.headId = currentHeads[i]);
 
             // 2. Fetch all transaction data in bulk
             addLog(`Fetching hex data...`);
             const txDataMap = await fetchBulkHexDirect(targetPlots.map(p => p.headId));
+            console.log("Hex data keys count:", Object.keys(txDataMap).length);
 
-            // 3. Loop in chunks to prevent UI freeze
-            const chunkSize = 2; // Process 2 plots per frame
-            let processIndex = 0;
+            // 3. Process plots
+            for (let i = 0; i < targetPlots.length; i++) {
+                const plot = targetPlots[i];
+                const hex = txDataMap[plot.headId];
+                if (hex) {
+                    try {
+                        const cleanHex = (typeof hex === 'string') ? hex.trim() : (hex.hex || hex.tx_hex || "");
+                        if (!cleanHex || cleanHex === "[object Object]") {
+                            throw new Error(`Invalid hex type: ${typeof hex}`);
+                        }
 
-            function processNextChunk() {
-                const chunkStart = processIndex;
-                const chunkEnd = Math.min(processIndex + chunkSize, targetPlots.length);
+                        console.log(`Plot ${plot.index}: Parsing hex ${cleanHex.substring(0, 20)}...`);
+                        const tx = new bsv.Transaction(cleanHex);
+                        plot.instance = PixelPlot28.fromTx(tx, 0);
 
-                for (let i = chunkStart; i < chunkEnd; i++) {
-                    const plot = targetPlots[i];
-                    const hex = txDataMap[plot.headId];
-                    if (hex) {
-                        try {
-                            const tx = new bsv.Transaction(hex);
-                            plot.instance = PixelPlot28.fromTx(tx, 0);
+                        if (plot.instance) {
                             decodePlotState(plot, false);
-                        } catch (e) { console.error(`Failed to parse plot ${plot.index}`, e); }
+                        } else {
+                            throw new Error("instance is null after fromTx");
+                        }
+                    } catch (e) {
+                        console.error(`Plot ${plot.index} Parse Error:`, e);
+                        addLog(`Plot ${plot.index} Error: ${e.message}`, "error");
                     }
-                }
-
-                processIndex += chunkSize;
-                if (processIndex < targetPlots.length) {
-                    requestAnimationFrame(processNextChunk);
+                } else {
+                    console.warn(`Zero hex for plot ${plot.index}`);
                 }
             }
-
-            await new Promise(resolve => {
-                // Override the recursive 'processNextChunk' to resolve when done
-                const originalProcess = processNextChunk;
-                processNextChunk = function () {
-                    originalProcess();
-                    if (processIndex >= targetPlots.length) resolve();
-                }
-                processNextChunk();
-            });
         }
 
         async function fetchLatestTxidsBulk(txids) {
-            addLog(`Following ${txids.length} txids...`);
+            addLog(`Following ${txids.length} txids (bulk)...`);
             let current = [...txids];
             let finished = new Array(txids.length).fill(false);
 
@@ -1473,30 +1273,37 @@
                     }
                 }
 
-                if (toCheck.length === 0) break;
+                if (toCheck.length === 0) {
+                    console.log("No more txids to check.");
+                    break;
+                }
 
-                // Batch the spent check (Whatsonchain limit is usually 20)
+                console.log(`Iteration ${iter}: Checking ${toCheck.length} txids...`);
+                addLog(`Loop ${iter}: Checking ${toCheck.length} txids...`);
+                // Batch the spent check (Whatsonchain limit is 20)
                 let madeProgressInIter = false;
                 for (let b = 0; b < toCheck.length; b += 20) {
                     const batch = toCheck.slice(b, b + 20);
                     const batchIndices = checkIndices.slice(b, b + 20);
                     try {
-                        const body = JSON.stringify({ utxos: batch });
-                        const url = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
-                        const resp = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
+                        const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
+                        const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: body
+                            body: JSON.stringify({ utxos: batch })
                         });
 
+                        addLog(`Proxy Response: ${resp.status}`);
+                        console.log(`Proxy response: ${resp.status}`);
                         if (!resp.ok) {
-                            const errText = await resp.text();
-                            addLog(`Spent check failed: ${errText.substring(0, 50)}`, "error");
-                            console.error("Payload causing 400:", body);
+                            const errBody = await resp.text();
+                            console.error(`Proxy Error Body: ${errBody}`);
                             continue;
                         }
 
                         const data = await resp.json();
+                        addLog(`Got ${data.length} results.`);
+                        console.log(`Batch result:`, data);
                         data.forEach((item, idx) => {
                             const originalIdx = batchIndices[idx];
                             if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
@@ -1507,76 +1314,70 @@
                             }
                         });
                     } catch (e) {
-                        addLog(`Spent check error: ${e.message}`, "error");
+                        console.error("Spent check error:", e);
                     }
                 }
                 if (!madeProgressInIter) break;
             }
+            console.log("Sync loop finished. Final Heads:", current);
             return current;
         }
 
         async function fetchBulkHexDirect(txids) {
-            // Sanitize: unique, 64-char hex only
             const cleanIds = [...new Set(txids.filter(id => id && id.length === 64))];
             if (cleanIds.length === 0) return {};
 
-            addLog(`Fetching ${cleanIds.length} unique HEXs...`);
+            addLog(`Fetching ${cleanIds.length} HEXs (bulk)...`);
             try {
-                const body = JSON.stringify({ txids: cleanIds });
-                const url = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
-                const resp = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
+                const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
+                const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: body
+                    body: JSON.stringify({ txids: cleanIds })
                 });
 
-                if (!resp.ok) {
-                    const errText = await resp.text();
-                    addLog(`Fetch HEX 400: ${errText.substring(0, 50)}`, "error");
-                    console.error("Body sent:", body);
-                    throw new Error(`Bulk fetch failed (${resp.status}): ${errText}`);
-                }
+                if (!resp.ok) return {};
 
                 const data = await resp.json();
+                addLog(`Received ${data.length} hexes.`);
+
                 const map = {};
-                data.forEach(item => {
-                    if (item && item.txid && item.hex) {
-                        map[item.txid] = item.hex;
+                cleanIds.forEach((txid, idx) => {
+                    const item = data[idx];
+                    if (item) {
+                        // WOC plural endpoint returns array of hex strings OR array of objects
+                        if (typeof item === 'string') {
+                            map[txid] = item;
+                        } else if (item.hex) {
+                            map[txid] = item.hex;
+                        } else if (item.txid && item.hex) {
+                            map[txid] = item.hex;
+                        } else {
+                            console.warn(`Unrecognized hex item for ${txid}:`, item);
+                            // If it has a .txid property matches our txid, try to find hex
+                            map[txid] = item.hex || item.tx_hex || item.toString();
+                        }
                     }
                 });
                 return map;
             } catch (e) {
-                addLog(`HEX Fetch Error: ${e.message}`, "error");
-                throw e;
+                console.error("Hex fetch error:", e);
+                return {};
             }
         }
 
-        async function findHead(txid, outIdx = 0) {
-            try {
-                const url = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
-                const resp = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ utxos: [{ txid, vout: outIdx }] })
-                });
-                const data = await resp.json();
-                const info = data[0];
-                if (info && info.spentIn) {
-                    return findHead(info.spentIn.txid || info.spentIn.tx_hash, 0);
-                }
-                return txid;
-            } catch (e) { return txid; }
-        }
+
 
         async function fetchBulkSpent(utxos) {
-            const url = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
-            // Use corsproxy.io for smaller POST requests
-            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ utxos })
-            });
-            return await res.json();
+            // Unused in main path, but nice to have. Converted to individual checks?
+            // Actually this is unused by current logic, let's just make it return empty to save space or mimic behavior.
+            const results = await Promise.all(utxos.map(async u => {
+                const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${u.txid}/out/${u.vout}/spent`;
+                const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}&t=${Date.now()}`);
+                if (res.ok) return res.json();
+                return {};
+            }));
+            return results;
         }
 
         function drawGridOverlays() {
@@ -1642,36 +1443,7 @@
             }
         }
 
-        function decodePlotState(plot, resetEdits = true) {
-            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
-            let n = 0n;
-            for (let i = 0; i < rawHex.length; i += 2) {
-                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
-                n |= (byte << (BigInt(i / 2) * 8n));
-            }
 
-            // Batch DOM updates for better performance
-            requestAnimationFrame(() => {
-                for (let i = 0; i < 784; i++) {
-                    const color = Number((n >> (BigInt(i) * 5n)) & 31n);
-                    plot.originalPixels[i] = color;
-
-                    const globalIdx = getGlobalIdxFromLocal(plot, i);
-                    if (resetEdits || !plot.modifiedIndices.has(i)) {
-                        currentPixels[globalIdx] = color;
-                        const el = document.getElementById(`p${globalIdx}`);
-                        if (el) {
-                            el.style.backgroundColor = COLORS[color];
-                            el.classList.add('is-filled');
-                        }
-                    }
-                }
-                if (resetEdits) {
-                    plot.modifiedIndices.clear();
-                }
-                updateQueueUI();
-            });
-        }
 
         function initPalette() {
             const container = document.getElementById('palette');
@@ -1902,11 +1674,23 @@
 
         // --- Updated Decode ---
         function decodePlotState(plot, resetEdits = true) {
-            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
+            if (!plot.instance || !plot.instance.pixels) {
+                console.warn(`Plot ${plot.index} has no instance data.`);
+                return;
+            }
+            // Use .pixels directly if it's already a string, or toHex if it's a ByteString object
+            const pixelsVal = typeof plot.instance.pixels === 'string' ? plot.instance.pixels :
+                (plot.instance.pixels.toHex ? plot.instance.pixels.toHex() : plot.instance.pixels.toString());
+
+            const rawHex = pixelsVal.startsWith('0x') ? pixelsVal.slice(2) : pixelsVal;
+
+            if (rawHex.length < 980) {
+                console.warn(`Plot ${plot.index} pixels data too short: ${rawHex.length} chars`);
+            }
+
             let n = 0n;
-            // Parse big int... (same as before)
             for (let i = 0; i < rawHex.length; i += 2) {
-                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16) || 0);
                 n |= (byte << (BigInt(i / 2) * 8n));
             }
 
@@ -2276,7 +2060,8 @@
                 let newFound = 0;
 
                 for (const owner of owners) {
-                    const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${owner}/history`);
+                    const url = `https://api.whatsonchain.com/v1/bsv/main/address/${owner}/history`;
+                    const resp = await fetch(`/api/proxy?url=${encodeURIComponent(url)}&t=${Date.now()}`);
                     if (!resp.ok) continue;
 
                     const txs = await resp.json();
@@ -2330,7 +2115,8 @@
 
         async function parseHistoryTx(txid, owner) {
             try {
-                const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}`);
+                const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${txid}`;
+                const resp = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`);
                 if (!resp.ok) return null;
 
                 const tx = await resp.json();
@@ -2579,9 +2365,9 @@
                         cube.className = 'queue-cube';
                         if (actualIdx === historyIndex) cube.style.borderColor = 'var(--success)';
                         cube.innerHTML = `
-                            <span class="plot-num">${ev.plotIndex}</span>
-                            <span class="count">${ev.type === 'RENT' ? 'RENT' : 'UPD'}</span>
-                        `;
+    <span class="plot-num">${ev.plotIndex}</span>
+    <span class="count">${ev.type === 'RENT' ? 'RENT' : 'UPD'}</span>
+`;
                         cube.onclick = () => {
                             historyIndex = actualIdx;
                             document.getElementById('history-slider').value = historyIndex;
@@ -2608,8 +2394,8 @@
                     cube.className = 'queue-cube';
                     cube.dataset.plotIndex = plot.index;
                     cube.innerHTML = `
-                        <span class="plot-num">${plot.index}</span>
-                        <span class="count">${plot.modifiedIndices.size}px</span>
+<span class="plot-num">${plot.index}</span>
+<span class="count">${plot.modifiedIndices.size}px</span>
                     `;
                     cube.onclick = () => zoomToPlot(plot.index);
                     cube.title = `Plot ${plot.index}: ${plot.modifiedIndices.size} pixels - Click to zoom`;
@@ -2627,17 +2413,17 @@
 
                     // Build quadrant grid visualization
                     const quadGrid = `
-                        <div class="rent-quad-grid">
-                            <div class="rent-quad-cell ${plot.queuedRents.has(0) ? 'filled' : ''}"></div>
-                            <div class="rent-quad-cell ${plot.queuedRents.has(1) ? 'filled' : ''}"></div>
-                            <div class="rent-quad-cell ${plot.queuedRents.has(2) ? 'filled' : ''}"></div>
-                            <div class="rent-quad-cell ${plot.queuedRents.has(3) ? 'filled' : ''}"></div>
-                        </div>
+<div class="rent-quad-grid">
+    <div class="rent-quad-cell ${plot.queuedRents.has(0) ? 'filled' : ''}"></div>
+    <div class="rent-quad-cell ${plot.queuedRents.has(1) ? 'filled' : ''}"></div>
+    <div class="rent-quad-cell ${plot.queuedRents.has(2) ? 'filled' : ''}"></div>
+    <div class="rent-quad-cell ${plot.queuedRents.has(3) ? 'filled' : ''}"></div>
+</div>
                     `;
 
                     cube.innerHTML = `
-                        ${quadGrid}
-                        <span class="count">P${plot.index}</span>
+${quadGrid}
+<span class="count">P${plot.index}</span>
                     `;
                     cube.onclick = () => zoomToPlot(plot.index);
                     const qList = Array.from(plot.queuedRents).join(',');
@@ -2658,8 +2444,8 @@
                     const cube = document.createElement('div');
                     cube.className = 'queue-cube error';
                     cube.innerHTML = `
-                        <span class="plot-num">${err.plotIndex}</span>
-                        <span class="count">${err.type}</span>
+<span class="plot-num">${err.plotIndex}</span>
+<span class="count">${err.type}</span>
                     `;
                     cube.onclick = () => zoomToPlot(err.plotIndex);
                     cube.title = `Error: ${err.message} - Click to zoom`;
@@ -2695,8 +2481,8 @@
 
         async function findHead(txid, outIdx = 0, userAddress = null) {
             try {
-                const url = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
-                const resp = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
+                const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
+                const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ utxos: [{ txid, vout: outIdx }] })
@@ -2726,7 +2512,7 @@
                 const estimatedFee = Math.ceil(txBytes * rate / 1000);
                 addLog(`Broadcasting ${txBytes} bytes, ~${estimatedFee} sat fee`);
                 const url = 'https://api.whatsonchain.com/v1/bsv/main/tx/raw';
-                const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
+                const response = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ txhex: txHex })
@@ -2773,7 +2559,8 @@
                 labelEl.style.display = 'none';
 
                 balanceEl.innerText = "Loading...";
-                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`);
+                const url = `https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`;
+                const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}&t=${Date.now()}`);
                 const data = await res.json();
                 balanceEl.innerText = ((data.confirmed || 0) + (data.unconfirmed || 0)) + ' SAT';
             } catch (e) {

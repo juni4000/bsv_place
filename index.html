@@ -1197,7 +1197,8 @@
         let currentMode = 'paint'; // 'paint', 'rent', or 'history'
         let feeRate = 100;
         let scale = 1.0;
-        const PAINT_ZOOM_THRESHOLD = 8.0;
+        let selectedTool = 'hand'; // 'hand' or 'color'
+        const PAINT_ZOOM_THRESHOLD = -1; // Disabled
         let rentPeriod = 144; // Default 1 day (144 blocks)
         let errorQueue = []; // Plots that failed and need retry with new head
         let rentInfoPopup = null; // Current rent info popup element
@@ -1477,41 +1478,37 @@
                 addLog(`Loop ${iter}: Checking ${toCheck.length} txids...`);
                 // Batch the spent check (Whatsonchain limit is 20)
                 let madeProgressInIter = false;
+                const promises = [];
                 for (let b = 0; b < toCheck.length; b += 20) {
                     const batch = toCheck.slice(b, b + 20);
                     const batchIndices = checkIndices.slice(b, b + 20);
-                    try {
-                        const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
-                        const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ utxos: batch })
-                        });
+                    promises.push((async () => {
+                        try {
+                            const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
+                            const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ utxos: batch })
+                            });
 
-                        addLog(`Proxy Response: ${resp.status}`);
-                        console.log(`Proxy response: ${resp.status}`);
-                        if (!resp.ok) {
-                            const errBody = await resp.text();
-                            console.error(`Proxy Error Body: ${errBody}`);
-                            continue;
+                            if (!resp.ok) return;
+
+                            const data = await resp.json();
+                            data.forEach((item, idx) => {
+                                const originalIdx = batchIndices[idx];
+                                if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
+                                    current[originalIdx] = item.spentIn.txid || item.spentIn.tx_hash;
+                                    madeProgressInIter = true;
+                                } else {
+                                    finished[originalIdx] = true;
+                                }
+                            });
+                        } catch (e) {
+                            console.error("Spent check error:", e);
                         }
-
-                        const data = await resp.json();
-                        addLog(`Got ${data.length} results.`);
-                        console.log(`Batch result:`, data);
-                        data.forEach((item, idx) => {
-                            const originalIdx = batchIndices[idx];
-                            if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
-                                current[originalIdx] = item.spentIn.txid || item.spentIn.tx_hash;
-                                madeProgressInIter = true;
-                            } else {
-                                finished[originalIdx] = true;
-                            }
-                        });
-                    } catch (e) {
-                        console.error("Spent check error:", e);
-                    }
+                    })());
                 }
+                await Promise.all(promises);
                 if (!madeProgressInIter) break;
             }
             console.log("Sync loop finished. Final Heads:", current);
@@ -1527,32 +1524,36 @@
             const chunkSize = 20;
 
             try {
+                const promises = [];
                 for (let i = 0; i < cleanIds.length; i += chunkSize) {
                     const chunk = cleanIds.slice(i, i + chunkSize);
-                    const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
-                    const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ txids: chunk })
-                    });
+                    promises.push((async () => {
+                        const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
+                        const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ txids: chunk })
+                        });
 
-                    if (!resp.ok) {
-                        console.error(`Chunk fetch failed: ${resp.status}`);
-                        continue;
-                    }
-
-                    const data = await resp.json();
-                    chunk.forEach((txid, idx) => {
-                        const item = data[idx];
-                        if (item) {
-                            if (typeof item === 'string') {
-                                map[txid] = item;
-                            } else if (item.hex) {
-                                map[txid] = item.hex;
-                            }
+                        if (!resp.ok) {
+                            console.error(`Chunk fetch failed: ${resp.status}`);
+                            return;
                         }
-                    });
+
+                        const data = await resp.json();
+                        chunk.forEach((txid, idx) => {
+                            const item = data[idx];
+                            if (item) {
+                                if (typeof item === 'string') {
+                                    map[txid] = item;
+                                } else if (item.hex) {
+                                    map[txid] = item.hex;
+                                }
+                            }
+                        });
+                    })());
                 }
+                await Promise.all(promises);
                 addLog(`Received ${Object.keys(map).length} hexes total.`);
             } catch (e) {
                 console.error("Bulk fetch failed:", e);
@@ -1642,9 +1643,20 @@
 
         function initPalette() {
             const container = document.getElementById('palette');
+
+            // Add Hand Tool
+            const handDiv = document.createElement('div');
+            handDiv.className = 'swatch selected';
+            handDiv.id = 'swatch-hand';
+            handDiv.innerHTML = '<div style="font-size: 16px; display: flex; align-items: center; justify-content: center; height: 100%;">✋</div>';
+            handDiv.style.background = '#1e293b';
+            handDiv.title = 'Pan / Drag Tool';
+            handDiv.onclick = selectHand;
+            container.appendChild(handDiv);
+
             COLORS.forEach((c, i) => {
                 const div = document.createElement('div');
-                div.className = 'swatch' + (i === 0 ? ' selected' : '');
+                div.className = 'swatch color-swatch';
                 div.style.backgroundColor = c;
                 div.onclick = () => selectColor(i);
                 container.appendChild(div);
@@ -1703,12 +1715,17 @@
 
         function setupCanvasInteractions() {
             const canvas = document.getElementById('grid-canvas');
+            const container = document.getElementById('grid-container');
 
             const handlePaintStart = (e, clientX, clientY) => {
-                if (scale < PAINT_ZOOM_THRESHOLD && currentMode === 'paint') {
-                    showZoomWarning();
+                if (selectedTool === 'hand') {
+                    isPanning = true;
+                    lastMouseX = clientX;
+                    lastMouseY = clientY;
+                    container.style.cursor = 'grabbing';
                     return;
                 }
+
                 const idx = getPixelIndexFromEvent(e, clientX, clientY);
                 if (idx === -1) return;
 
@@ -1720,10 +1737,15 @@
             };
 
             const handlePaintMove = (e, clientX, clientY) => {
+                if (selectedTool === 'hand' && isPanning) {
+                    // Panning is handled by window.onmousemove in initPanZoom
+                    return;
+                }
+
                 const idx = getPixelIndexFromEvent(e, clientX, clientY);
                 if (idx !== -1) {
                     if (isDrawing && currentMode === 'paint') {
-                        if (scale >= PAINT_ZOOM_THRESHOLD) paint(idx);
+                        paint(idx);
                     }
                     updateHoverInfo(idx);
                 }
@@ -1739,27 +1761,38 @@
                 handlePaintMove(e, e.clientX, e.clientY);
             };
 
-            // Touch Painting
+            // Touch Painting / Panning
             canvas.ontouchstart = (e) => {
                 if (e.touches.length === 1) {
                     const t = e.touches[0];
                     handlePaintStart(e, t.clientX, t.clientY);
-                    // Don't prevent default here if we want to allow scrolling/panning 
-                    // BUT we only paint if scale is high.
-                    if (scale >= PAINT_ZOOM_THRESHOLD) e.preventDefault();
+                    // Always prevent default if we're in color mode (drawing) or hand mode (panning via our own logic)
+                    e.preventDefault();
                 }
             };
 
             canvas.ontouchmove = (e) => {
-                if (e.touches.length === 1 && isDrawing) {
+                if (e.touches.length === 1) {
                     const t = e.touches[0];
-                    handlePaintMove(e, t.clientX, t.clientY);
+                    if (isPanning) {
+                        const dx = t.clientX - lastMouseX;
+                        const dy = t.clientY - lastMouseY;
+                        panX += dx;
+                        panY += dy;
+                        lastMouseX = t.clientX;
+                        lastMouseY = t.clientY;
+                        updateTransform();
+                    } else if (isDrawing) {
+                        handlePaintMove(e, t.clientX, t.clientY);
+                    }
                     e.preventDefault();
                 }
             };
 
             canvas.ontouchend = () => {
                 isDrawing = false;
+                isPanning = false;
+                container.style.cursor = 'grab';
             };
         }
 
@@ -2217,13 +2250,26 @@
 
         function selectColor(idx) {
             selectedColor = idx;
-            document.querySelectorAll('.swatch').forEach((s, i) => s.classList.toggle('selected', i === idx));
+            selectedTool = 'color';
+            document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+            const swatches = document.querySelectorAll('.color-swatch');
+            if (swatches[idx]) swatches[idx].classList.add('selected');
+
             updatePriceLabel();
+            addLog(`Switched to color #${idx}`);
+        }
+
+        function selectHand() {
+            selectedTool = 'hand';
+            document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+            document.getElementById('swatch-hand').classList.add('selected');
+            addLog("Hand tool selected (Pan/Drag)");
         }
 
         function updatePriceLabel() {
             let price = (selectedColor <= 1) ? 1 : (selectedColor >= 28 ? 5 : 3);
-            document.getElementById('selected-price').innerText = `${price} SAT / PIXEL`;
+            const el = document.getElementById('selected-price');
+            if (el) el.innerText = (selectedTool === 'hand') ? "DRAG MODE" : `${price} SAT / PIXEL`;
         }
 
         // --- CANAVAS & INTERACTION UPDATES ---

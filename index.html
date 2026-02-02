@@ -864,6 +864,143 @@
                 opacity: 1;
             }
         }
+
+        /* --- MOBILE ADAPTATION --- */
+        @media (max-width: 768px) {
+            header {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 10px;
+                height: auto;
+            }
+
+            .logo {
+                font-size: 1.2rem;
+            }
+
+            .wallet-status {
+                padding: 4px 10px;
+            }
+
+            #contract-badge {
+                display: none;
+            }
+
+            .bottom-shelf {
+                flex-direction: column;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: auto;
+                max-height: 50vh;
+                overflow-y: auto;
+                background: rgba(15, 23, 42, 0.95);
+                backdrop-filter: blur(20px);
+                z-index: 1000;
+                border-top: 1px solid var(--accent);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .bottom-shelf.collapsed {
+                transform: translateY(calc(100% - 40px));
+            }
+
+            .log-container,
+            .queue-panel,
+            .controls-panel {
+                border-left: none;
+                border-bottom: 1px solid var(--border-color);
+                width: 100% !important;
+            }
+
+            .viewport {
+                height: 100vh;
+                padding-bottom: 40px;
+                /* Space for collapsed shelf tab */
+            }
+
+            .zoom-slider-container {
+                bottom: 60px !important;
+                right: 20px !important;
+            }
+
+            .interaction-guide {
+                display: none !important;
+            }
+        }
+
+        /* Zoom Slider Styling */
+        .zoom-slider-container {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid var(--border-color);
+            z-index: 50;
+        }
+
+        .zoom-slider-container label {
+            font-size: 10px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        #zoom-range {
+            writing-mode: bt-lr;
+            /* Vertical slider */
+            appearance: slider-vertical;
+            width: 8px;
+            height: 150px;
+            cursor: pointer;
+        }
+
+        .shelf-toggle {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 5px;
+            background: var(--accent);
+            border-radius: 99px;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .shelf-toggle {
+                display: block;
+            }
+        }
+
+        .locked-interaction {
+            pointer-events: none !important;
+        }
+
+        .zoom-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            z-index: 2000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
     </style>
 </head>
 
@@ -897,16 +1034,26 @@
                 </div>
                 <div id="grid"></div>
             </div>
-            <div
+            <div class="zoom-slider-container">
+                <label>ZOOM</label>
+                <input type="range" id="zoom-range" min="0.1" max="15" step="0.1" value="1.0"
+                    oninput="handleSliderZoom(this.value)">
+                <span id="zoom-value" style="font-size: 10px; font-family: 'Fira Code'">1.0x</span>
+            </div>
+
+            <div id="zoom-warning" class="zoom-warning">Zoom in more to paint!</div>
+
+            <div class="interaction-guide"
                 style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 99px; backdrop-filter: blur(10px); color: var(--text-dim); font-size: 0.75rem; display: flex; gap: 20px; pointer-events: none; border: 1px solid var(--border-color);">
-                <span>L-Click: Draw/Select</span>
-                <span>R-Click Drag: Pan</span>
-                <span>Scroll: Zoom</span>
+                <span>L-Click: Draw</span>
+                <span>R-Drag: Pan</span>
+                <span>Pinch/Scroll: Zoom</span>
             </div>
         </div>
     </div>
 
     <div class="bottom-shelf" id="bottom-shelf">
+        <div class="shelf-toggle" onclick="toggleShelf()"></div>
         <div class="log-container">
             <h4>CONSOLE</h4>
             <div id="log-stream"></div>
@@ -1049,6 +1196,8 @@
         let isDrawing = false;
         let currentMode = 'paint'; // 'paint', 'rent', or 'history'
         let feeRate = 100;
+        let scale = 1.0;
+        const PAINT_ZOOM_THRESHOLD = 8.0;
         let rentPeriod = 144; // Default 1 day (144 blocks)
         let errorQueue = []; // Plots that failed and need retry with new head
         let rentInfoPopup = null; // Current rent info popup element
@@ -1062,7 +1211,6 @@
         let currentBlockHeight = 0;
 
         // Pan & Zoom state
-        let scale = 1.0;
         let panX = 0;
         let panY = 0;
         let isPanning = false;
@@ -1556,30 +1704,84 @@
         function setupCanvasInteractions() {
             const canvas = document.getElementById('grid-canvas');
 
-            canvas.onmousedown = (e) => {
-                if (e.button === 0) { // Left click
-                    const idx = getPixelIndexFromEvent(e);
-                    if (idx === -1) return;
+            const handlePaintStart = (e, clientX, clientY) => {
+                if (scale < PAINT_ZOOM_THRESHOLD && currentMode === 'paint') {
+                    showZoomWarning();
+                    return;
+                }
+                const idx = getPixelIndexFromEvent(e, clientX, clientY);
+                if (idx === -1) return;
 
-                    if (currentMode === 'paint') {
-                        isDrawing = true; paint(idx);
-                    } else {
-                        handleRentClick(idx);
-                    }
-                    // Don't prevent default if we want focus, but usually we do to prevent dragging
-                    // e.preventDefault(); 
+                if (currentMode === 'paint') {
+                    isDrawing = true; paint(idx);
+                } else {
+                    handleRentClick(idx);
                 }
             };
 
-            // Global mouse up handles isDrawing = false
-
-            canvas.onmousemove = (e) => {
-                const idx = getPixelIndexFromEvent(e);
+            const handlePaintMove = (e, clientX, clientY) => {
+                const idx = getPixelIndexFromEvent(e, clientX, clientY);
                 if (idx !== -1) {
-                    if (isDrawing && currentMode === 'paint') paint(idx);
+                    if (isDrawing && currentMode === 'paint') {
+                        if (scale >= PAINT_ZOOM_THRESHOLD) paint(idx);
+                    }
                     updateHoverInfo(idx);
                 }
             };
+
+            canvas.onmousedown = (e) => {
+                if (e.button === 0) { // Left click
+                    handlePaintStart(e, e.clientX, e.clientY);
+                }
+            };
+
+            canvas.onmousemove = (e) => {
+                handlePaintMove(e, e.clientX, e.clientY);
+            };
+
+            // Touch Painting
+            canvas.ontouchstart = (e) => {
+                if (e.touches.length === 1) {
+                    const t = e.touches[0];
+                    handlePaintStart(e, t.clientX, t.clientY);
+                    // Don't prevent default here if we want to allow scrolling/panning 
+                    // BUT we only paint if scale is high.
+                    if (scale >= PAINT_ZOOM_THRESHOLD) e.preventDefault();
+                }
+            };
+
+            canvas.ontouchmove = (e) => {
+                if (e.touches.length === 1 && isDrawing) {
+                    const t = e.touches[0];
+                    handlePaintMove(e, t.clientX, t.clientY);
+                    e.preventDefault();
+                }
+            };
+
+            canvas.ontouchend = () => {
+                isDrawing = false;
+            };
+        }
+
+        // Updated helper to handle client coords
+        function getPixelIndexFromEvent(e, clientX, clientY) {
+            const canvas = document.getElementById('grid-canvas');
+            if (!canvas) return -1;
+            const rect = canvas.getBoundingClientRect();
+
+            // If they didn't provide coords, use from event (legacy fallback)
+            const cx = clientX !== undefined ? clientX : e.clientX;
+            const cy = clientY !== undefined ? clientY : e.clientY;
+
+            const x = cx - rect.left;
+            const y = cy - rect.top;
+
+            // Normalized to grid size (280)
+            const pixelX = Math.floor(x / (rect.width / 280));
+            const pixelY = Math.floor(y / (rect.height / 280));
+
+            if (pixelX < 0 || pixelX >= 280 || pixelY < 0 || pixelY >= 280) return -1;
+            return pixelY * 280 + pixelX;
         }
 
         function redrawGrid() {
@@ -1790,17 +1992,70 @@
                 scale = Math.min(Math.max(0.1, scale + scale * delta), 15);
 
                 const vRect = viewport.getBoundingClientRect();
-                // Mouse position relative to viewport
                 const mouseX = e.clientX - vRect.left;
                 const mouseY = e.clientY - vRect.top;
 
-                // To keep the point under the mouse stationary:
-                // (mouseX - panX) / oldScale = (mouseX - newPanX) / scale
                 const scaleRatio = scale / oldScale;
                 panX = mouseX - (mouseX - panX) * scaleRatio;
                 panY = mouseY - (mouseY - panY) * scaleRatio;
 
                 updateTransform();
+            };
+
+            // --- TOUCH SUPPORT ---
+            let initialDist = 0;
+            let initialScale = 1;
+
+            viewport.ontouchstart = (e) => {
+                if (e.touches.length === 2) {
+                    initialDist = Math.hypot(
+                        e.touches[0].pageX - e.touches[1].pageX,
+                        e.touches[0].pageY - e.touches[1].pageY
+                    );
+                    initialScale = scale;
+                    document.getElementById('bottom-shelf').classList.add('locked-interaction');
+                    e.preventDefault();
+                } else if (e.touches.length === 1) {
+                    isPanning = true;
+                    lastMouseX = e.touches[0].clientX;
+                    lastMouseY = e.touches[0].clientY;
+                }
+            };
+
+            viewport.ontouchmove = (e) => {
+                if (e.touches.length === 2) {
+                    const dist = Math.hypot(
+                        e.touches[0].pageX - e.touches[1].pageX,
+                        e.touches[0].pageY - e.touches[1].pageY
+                    );
+                    const delta = dist / initialDist;
+                    const oldScale = scale;
+                    scale = Math.min(Math.max(0.1, initialScale * delta), 15);
+
+                    const vRect = viewport.getBoundingClientRect();
+                    const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - vRect.left;
+                    const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - vRect.top;
+
+                    const scaleRatio = scale / oldScale;
+                    panX = centerX - (centerX - panX) * scaleRatio;
+                    panY = centerY - (centerY - panY) * scaleRatio;
+
+                    updateTransform();
+                    e.preventDefault();
+                } else if (e.touches.length === 1 && isPanning) {
+                    const dx = e.touches[0].clientX - lastMouseX;
+                    const dy = e.touches[0].clientY - lastMouseY;
+                    panX += dx;
+                    panY += dy;
+                    lastMouseX = e.touches[0].clientX;
+                    lastMouseY = e.touches[0].clientY;
+                    updateTransform();
+                }
+            };
+
+            viewport.ontouchend = () => {
+                isPanning = false;
+                document.getElementById('bottom-shelf').classList.remove('locked-interaction');
             };
 
             viewport.onmousedown = (e) => {
@@ -1833,9 +2088,41 @@
             viewport.oncontextmenu = (e) => e.preventDefault();
         }
 
+        function handleSliderZoom(val) {
+            const newVal = parseFloat(val);
+            const viewport = document.querySelector('.viewport');
+            const vRect = viewport.getBoundingClientRect();
+            const centerX = vRect.width / 2;
+            const centerY = vRect.height / 2;
+
+            const oldScale = scale;
+            scale = newVal;
+
+            const scaleRatio = scale / oldScale;
+            panX = centerX - (centerX - panX) * scaleRatio;
+            panY = centerY - (centerY - panY) * scaleRatio;
+
+            updateTransform();
+        }
+
+        function toggleShelf() {
+            document.getElementById('bottom-shelf').classList.toggle('collapsed');
+        }
+
+        function showZoomWarning() {
+            const el = document.getElementById('zoom-warning');
+            el.style.opacity = '1';
+            setTimeout(() => el.style.opacity = '0', 2000);
+        }
+
         function updateTransform() {
             const container = document.getElementById('grid-container');
-            // Using requestAnimationFrame for silky smooth performance
+            const slider = document.getElementById('zoom-range');
+            const sliderVal = document.getElementById('zoom-value');
+
+            if (slider) slider.value = scale;
+            if (sliderVal) sliderVal.innerText = `${scale.toFixed(1)}x`;
+
             requestAnimationFrame(() => {
                 container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
             });

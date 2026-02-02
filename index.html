@@ -1097,7 +1097,8 @@
 
         async function updateBlockHeight() {
             try {
-                const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/chain/info');
+                const url = 'https://api.whatsonchain.com/v1/bsv/main/chain/info';
+                const resp = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                 if (resp.ok) {
                     const data = await resp.json();
                     if (data.blocks > currentBlockHeight) {
@@ -1463,7 +1464,8 @@
             // Helper to check spending of a single UTXO via GET
             const checkSpentOne = async (txid) => {
                 try {
-                    const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/0/spent`);
+                    const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/0/spent`;
+                    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                     if (res.ok) {
                         const data = await res.json();
                         if (data.spentIn && (data.spentIn.txid || data.spentIn.tx_hash)) {
@@ -1516,7 +1518,8 @@
                 const batch = cleanIds.slice(i, i + BATCH_SIZE);
                 await Promise.all(batch.map(async (txid) => {
                     try {
-                        const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/hex`);
+                        const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/hex`;
+                        const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                         if (res.ok) {
                             const hex = await res.text();
                             map[txid] = hex;
@@ -1539,7 +1542,8 @@
             // Unused in main path, but nice to have. Converted to individual checks?
             // Actually this is unused by current logic, let's just make it return empty to save space or mimic behavior.
             const results = await Promise.all(utxos.map(async u => {
-                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${u.txid}/out/${u.vout}/spent`);
+                const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${u.txid}/out/${u.vout}/spent`;
+                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                 if (res.ok) return res.json();
                 return {};
             }));
@@ -2243,7 +2247,8 @@
                 let newFound = 0;
 
                 for (const owner of owners) {
-                    const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${owner}/history`);
+                    const url = `https://api.whatsonchain.com/v1/bsv/main/address/${owner}/history`;
+                    const resp = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                     if (!resp.ok) continue;
 
                     const txs = await resp.json();
@@ -2297,7 +2302,8 @@
 
         async function parseHistoryTx(txid, owner) {
             try {
-                const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}`);
+                const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${txid}`;
+                const resp = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                 if (!resp.ok) return null;
 
                 const tx = await resp.json();
@@ -2662,7 +2668,8 @@ ${quadGrid}
 
         async function findHead(txid, outIdx = 0, userAddress = null) {
             try {
-                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/${outIdx}/spent`);
+                const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/${outIdx}/spent`;
+                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.spentIn && (data.spentIn.txid || data.spentIn.tx_hash)) {
@@ -2736,7 +2743,8 @@ ${quadGrid}
                 labelEl.style.display = 'none';
 
                 balanceEl.innerText = "Loading...";
-                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`);
+                const url = `https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`;
+                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                 const data = await res.json();
                 balanceEl.innerText = ((data.confirmed || 0) + (data.unconfirmed || 0)) + ' SAT';
             } catch (e) {

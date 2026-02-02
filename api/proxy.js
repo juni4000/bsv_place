@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
     const { url } = req.query; // Get the target URL from the query string
 
     if (!url) {
@@ -35,4 +35,4 @@ export default async function handler(req, res) {
         console.error('Proxy Error:', error);
         res.status(500).json({ error: 'Failed to fetch external resource', details: error.message });
     }
-}
+};

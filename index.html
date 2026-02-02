@@ -2,803 +2,3100 @@
 <html>
 
 <head>
-    <title>PixelPlot45 2x2 Grid</title>
+    <title>PixelPlot V2.1 - Elite Pixel Real Estate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
+        :root {
+            --bg-dark: #020617;
+            --card-bg: #0f172a;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.3);
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --pixel-size: 5px;
+            --border-color: #1e293b;
+            --grid-size: 196;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1a1a1a;
-            color: #f0f0f0;
-            text-align: center;
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
             margin: 0;
-            padding: 20px;
-        }
-
-        h1 {
-            color: #3b82f6;
-            margin-bottom: 20px;
-        }
-
-        #main-container {
+            padding: 0;
+            overflow: hidden;
+            /* Prevent body scroll */
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 20px;
+            height: 100vh;
         }
 
-        :root {
-            --pixel-size: 8px;
+        header {
+            padding: 20px 40px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .wallet-status {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(2, 6, 23, 0.6);
+            padding: 8px 16px;
+            border-radius: 99px;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .main-layout {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- LEFT COLUMN: GRID --- */
+        .viewport {
+            flex: 1;
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            /* CRITICAL: contain the zoomed grid */
+        }
+
+        #grid-container {
+            position: relative;
+            padding: 2px;
+            background: #1e293b;
+            border-radius: 4px;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+            cursor: grab;
+            transform-origin: 0 0;
+            display: inline-block;
+            transition: transform 0.05s ease-out;
+            /* Smooth small adjustments */
+        }
+
+        #grid-container:active {
+            cursor: grabbing;
         }
 
         #grid {
             display: grid;
-            grid-template-columns: repeat(90, var(--pixel-size));
-            gap: 0px;
-            background: #333;
-            padding: 2px;
-            border-radius: 4px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            grid-template-columns: repeat(var(--grid-size), var(--pixel-size));
+            background: #334155;
             user-select: none;
             cursor: crosshair;
-            border: 2px solid #555;
-            width: fit-content;
-            margin: 0 auto;
+            border: 1px solid #475569;
+            position: relative;
         }
 
         .pixel {
             width: var(--pixel-size);
             height: var(--pixel-size);
+            border: 0.1px solid rgba(255, 255, 255, 0.03);
+            transition: background 0.1s;
+            position: relative;
+        }
+
+        /* Small dot inside each pixel */
+        .pixel::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 2px;
+            height: 2px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .pixel.is-filled::after {
+            opacity: 0;
         }
 
         .pixel:hover {
-            box-shadow: inset 0 0 2px white;
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.5);
+            z-index: 10;
         }
 
-        /* Quadrant borders */
-        .pixel.border-r {
-            border-right: 1px solid #777;
+        .pixel.modified {
+            box-shadow: inset 0 0 0 2px var(--accent);
+            z-index: 5;
         }
 
-        .pixel.border-b {
-            border-bottom: 1px solid #777;
+        /* Rent mode styles */
+        body.rent-mode #grid {
+            filter: brightness(0.5);
         }
 
-        .pixel.c0 {
-            background: #ffffff;
+        /* Show grid lines in appropriate modes */
+        body.history-mode .quadrant-grid-line {
+            display: none !important;
         }
 
-        .pixel.c1 {
-            background: #00ff00;
+        /* Grid lines are now visible in rent mode by default unless we specifically hide them */
+
+        .pixel.rent-selected {
+            filter: brightness(1.8) !important;
+            box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.8) !important;
+            z-index: 15;
         }
 
-        .pixel.c2 {
-            background: #000000;
+        .pixel.rented-by-other {
+            opacity: 0.6;
         }
 
-        .pixel.c3 {
-            background: #ff0000;
+        .pixel.rented-by-other::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(245, 158, 11, 0.3) 2px,
+                    rgba(245, 158, 11, 0.3) 4px);
+            pointer-events: none;
         }
 
-        .controls {
-            background: #2d2d2d;
-            padding: 20px;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 100%;
-            max-width: 800px;
+        /* Quadrant Overlays */
+        .quadrant-lines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 20;
         }
 
-        .row {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
+        .quadrant-lines::before,
+        .quadrant-lines::after {
+            display: none !important;
         }
 
-        .palette-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-        }
-
-        .palette-item span {
+        .quadrant-label {
+            position: absolute;
             font-size: 10px;
-            color: #888;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.3);
             text-transform: uppercase;
+            letter-spacing: 1px;
+            pointer-events: none;
         }
 
-        .palette-btn {
-            width: 30px;
-            height: 30px;
-            border-radius: 4px;
-            border: 2px solid #555;
+        /* --- RIGHT COLUMN: TOOLS --- */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
-        .palette-btn.selected {
-            border-color: #fff;
-            box-shadow: 0 0 8px white;
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
         }
 
-        button.action-btn {
-            padding: 8px 16px;
-            border-radius: 4px;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            background: #3b82f6;
-            color: white;
-        }
-
-        #tx-panel {
-            background: #2a2a2a;
-            border: 1px solid #444;
-            padding: 15px;
-            border-radius: 8px;
-            display: none;
-        }
-
-        .log {
-            font-family: monospace;
-            font-size: 11px;
-            color: #aaa;
-            height: 120px;
-            overflow-y: auto;
-            text-align: left;
-            background: #111;
-            padding: 10px;
-            border-radius: 4px;
-            width: 100%;
-            max-width: 800px;
-            white-space: pre-wrap;
-        }
-
-        .wallet-bar {
-            background: #232323;
-            padding: 10px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+        .card h3 {
+            margin: 0 0 10px 0;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 100%;
-            max-width: 800px;
-            border: 1px solid #444;
-            font-size: 13px;
         }
 
-        .wallet-input-group {
-            display: flex;
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 4px;
+        }
+
+        .swatch {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .swatch:hover {
+            transform: scale(1.1);
+        }
+
+        .swatch.selected {
+            border-color: white;
+            box-shadow: 0 0 12px var(--accent-glow);
+            z-index: 2;
+        }
+
+        .quad-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
+        }
+
+        .quad-btn {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quad-btn:hover {
+            border-color: var(--accent);
+            background: #262f3f;
+        }
+
+        .quad-btn.rented {
+            border-color: var(--warning);
+        }
+
+        .quad-btn .title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .quad-btn .meta {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            display: block;
+        }
+
+        .quad-btn .time {
+            color: var(--warning);
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+        }
+
+        /* --- BOTTOM SHELF: LOGS --- */
+        .bottom-shelf {
+            position: relative;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--accent);
+            height: 280px;
+            z-index: 1000;
+            display: grid;
+            grid-template-columns: 300px minmax(300px, 1fr) minmax(300px, 1fr) 350px;
+            box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.8);
+        }
+
+        .bottom-shelf.visible {
+            transform: translateY(0);
+        }
+
+        .queue-summary {
+            display: flex;
+            gap: 30px;
             align-items: center;
         }
 
-        .wallet-input-group input {
-            background: #111;
-            border: 1px solid #555;
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 4px;
+        .queue-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .queue-item .label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .queue-item .val {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .queue-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-dim);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .tx-list {
+            margin-top: 10px;
+            max-height: 80px;
+            overflow-y: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.6;
+            }
+        }
+
+        .loading-text {
+            animation: pulse 1.5s infinite;
+        }
+
+        #rent-queue-info {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+            font-size: 0.85rem;
+            color: #c4b5fd;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            border-radius: 20px;
+            width: 400px;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 1);
+        }
+
+        .log-container {
+            padding: 8px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+            font-family: 'Fira Code', monospace;
+            background: #020617;
+            max-height: 260px;
+        }
+
+        .log-container h4 {
+            margin: 0 0 8px 0;
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .log-msg {
+            padding: 3px 6px;
+            border-left: 2px solid var(--accent);
+            margin-bottom: 3px;
+            font-size: 10px;
+            animation: slideIn 0.2s ease-out;
+            color: var(--text-dim);
+            word-break: break-word;
+        }
+
+        .log-msg.error {
+            border-left-color: var(--danger);
+            color: #fca5a5;
+        }
+
+        .log-msg.success {
+            border-left-color: var(--success);
+            color: #6ee7b7;
+        }
+
+        .log-msg a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .log-msg a:hover {
+            text-decoration: underline;
+        }
+
+        .queue-panel {
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .plot-group {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #334155;
+        }
+
+        .plot-group h4 {
+            margin: 0 0 5px 0;
             font-size: 11px;
-            width: 180px;
+            color: var(--accent);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Compact queue cubes */
+        .queue-cubes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 5px;
+        }
+
+        .queue-cube {
+            width: 50px;
+            height: 50px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .queue-cube:hover {
+            background: rgba(56, 189, 248, 0.3);
+            transform: scale(1.05);
+        }
+
+        .queue-cube.rent-cube {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: #8b5cf6;
+            padding: 4px;
+        }
+
+        .queue-cube.rent-cube:hover {
+            background: rgba(139, 92, 246, 0.2);
+        }
+
+        .queue-cube.processing {
+            animation: cubeProcess 0.5s infinite;
+            border-color: var(--success);
+        }
+
+        .queue-cube.error {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .queue-cube .plot-num {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
+        .queue-cube .count {
+            font-size: 10px;
+            color: var(--accent);
+        }
+
+        .queue-cube.rent-cube .count {
+            color: #a78bfa;
+        }
+
+        /* Rent cube quadrant grid */
+        .rent-quad-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            width: 24px;
+            height: 24px;
+            margin-bottom: 2px;
+        }
+
+        .rent-quad-cell {
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 2px;
+        }
+
+        .rent-quad-cell.filled {
+            background: rgba(139, 92, 246, 0.8);
+        }
+
+        @keyframes cubeProcess {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Rent info tooltip */
+        .rent-info-popup {
+            position: fixed;
+            background: var(--card-bg);
+            border: 1px solid #8b5cf6;
+            border-radius: 8px;
+            padding: 12px;
+            z-index: 2000;
+            min-width: 180px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            font-size: 11px;
+        }
+
+        .rent-info-popup h4 {
+            margin: 0 0 8px 0;
+            color: #a78bfa;
+            font-size: 12px;
+        }
+
+        .rent-info-popup .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            color: var(--text-dim);
+        }
+
+        .rent-info-popup .info-row .val {
+            color: var(--text-main);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .rent-info-popup .quad-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .rent-info-popup .quad-box {
+            padding: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            text-align: center;
+            font-size: 10px;
+        }
+
+        .rent-info-popup .quad-box.available {
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .rent-info-popup .quad-box.rented {
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+
+        /* Rent period selector */
+        .rent-period-selector {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .rent-period-btn {
+            flex: 1;
+            padding: 6px 8px;
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            color: var(--text-dim);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        .rent-period-btn.active {
+            background: rgba(139, 92, 246, 0.3);
+            border-color: #8b5cf6;
+            color: #a78bfa;
+        }
+
+        /* History mode styles */
+        body.history-mode #grid {
+            filter: saturate(0.7);
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .btn-small:hover {
+            background: #334155;
+        }
+
+        .btn-small.playing {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .pixel.history-updated {
+            animation: historyPulse 0.5s ease-out;
+        }
+
+        @keyframes historyPulse {
+            0% {
+                box-shadow: inset 0 0 0 3px var(--success);
+            }
+
+            100% {
+                box-shadow: none;
+            }
+        }
+
+        /* Rented quadrant indicator */
+        .pixel.rented-q {
+            position: relative;
+        }
+
+        .pixel.rented-q::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(45deg,
+                    transparent,
+                    transparent 1px,
+                    rgba(245, 158, 11, 0.4) 1px,
+                    rgba(245, 158, 11, 0.4) 2px);
+            pointer-events: none;
+        }
+
+        .rent-badge {
+            position: absolute;
+            font-size: 6px;
+            color: #fff;
+            background: rgba(139, 92, 246, 0.9);
+            padding: 2px 4px;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            min-width: 30px;
+            max-width: 60px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .time-left {
+            font-weight: 800;
+            color: #ffd700;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .rent-comment {
+            font-size: 5px;
+            font-style: italic;
+            opacity: 0.9;
+            line-height: 1;
+        }
+
+        .pixel.rented-q {
+            position: relative;
+            filter: brightness(1.3) saturate(1.4);
+            z-index: 1;
+            /* Bring slightly above normal pixels */
+        }
+
+        .pixel.rented-q::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(139, 92, 246, 0.3);
+            border: 0.5px solid rgba(139, 92, 246, 0.6);
+            pointer-events: none;
+            box-shadow: inset 0 0 4px rgba(139, 92, 246, 0.4);
+        }
+
+        .controls-panel {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-left: 1px solid var(--border-color);
+        }
+
+        .mode-switch {
+            display: flex;
+            background: #1e293b;
+            padding: 4px;
+            border-radius: 8px;
+            gap: 4px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .mode-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .fee-slider-container {
+            margin-top: 10px;
+        }
+
+        .slider-val {
+            float: right;
+            color: var(--warning);
+            font-family: 'Fira Code', monospace;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div id="main-container">
-        <h1>PixelPlot45 <span style="font-size:0.6em; color:#888">2x2 Grid (90x90)</span></h1>
-
-        <div class="wallet-bar">
-            <div>
-                Wallet: <span id="wallet-addr" style="color:#3b82f6; font-family:monospace">...</span>
-                | <span id="wallet-balance" style="color:#10b981; font-weight:bold">0</span> sat
+    <header>
+        <div class="logo">PIXEL<span>PLOT</span> V2.1</div>
+        <div style="display:flex; gap:20px; align-items: center">
+            <div id="contract-badge"
+                style="font-size: 11px; background: #1e293b; padding: 4px 10px; border-radius: 4px; color: var(--text-dim);">
+                CONTRACT: <span id="display-contract-id">...</span>
             </div>
-            <div class="wallet-input-group">
-                <input type="password" id="wif-input" placeholder="WIF or Base64 WIF">
-                <button class="action-btn" style="padding:4px 10px; background:#444" onclick="applyNewWif()">Set
-                    Key</button>
+            <div class="wallet-status">
+                <div class="status-dot"></div>
+                <div style="text-align:left">
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <span id="display-wallet-label"
+                            style="font-size: 9px; background: var(--accent); color: #000; padding: 1px 4px; border-radius: 3px; font-weight: 800; display:none;">SELLER</span>
+                        <div id="display-wallet-addr" style="font-size: 13px; font-weight: 600;">Connecting...</div>
+                    </div>
+                    <div id="display-wallet-balance" style="font-size: 11px; color: var(--success);">0 SAT</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <div class="viewport">
+            <div id="grid-container">
+                <div class="quadrant-lines" id="quadrant-overlay">
+                    <!-- Dynamic Grid Overlays -->
+                </div>
+                <div id="grid"></div>
+            </div>
+            <div
+                style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 99px; backdrop-filter: blur(10px); color: var(--text-dim); font-size: 0.75rem; display: flex; gap: 20px; pointer-events: none; border: 1px solid var(--border-color);">
+                <span>L-Click: Draw/Select</span>
+                <span>R-Click Drag: Pan</span>
+                <span>Scroll: Zoom</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-shelf" id="bottom-shelf">
+        <div class="log-container">
+            <h4>CONSOLE</h4>
+            <div id="log-stream"></div>
+        </div>
+
+        <div
+            style="display: flex; flex-direction: column; padding: 15px; gap: 10px; border-right: 1px solid var(--border-color);">
+            <div class="card" id="palette-card" style="padding: 0; border: none; background: transparent;">
+                <h3>PALETTE <span id="selected-price" style="color: var(--accent)">1 SAT</span></h3>
+                <div class="palette" id="palette"></div>
+            </div>
+            <div id="plot-info-card"
+                style="font-size: 11px; color: var(--text-dim); background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                Hover over grid to see plot info
             </div>
         </div>
 
-        <div class="controls">
-            <div class="row">
-                <button class="action-btn" onclick="loadAllContracts()">Load All Plots</button>
-                <div style="margin-left:20px; font-weight: bold;">Palette:</div>
-                <div class="palette-item" onclick="selectColor(0)">
-                    <div class="palette-btn c0"></div>
-                    <span>White</span>
-                </div>
-                <div class="palette-item" onclick="selectColor(1)">
-                    <div class="palette-btn c1"></div>
-                    <span>Green</span>
-                </div>
-                <div class="palette-item" onclick="selectColor(2)">
-                    <div class="palette-btn c2"></div>
-                    <span>Black</span>
-                </div>
-                <div class="palette-item" onclick="selectColor(3)">
-                    <div class="palette-btn c3"></div>
-                    <span>Red</span>
-                </div>
-                <div style="margin-left:30px; display: flex; align-items: center; gap: 10px;">
-                    <label>Zoom:</label>
-                    <input type="range" min="2" max="20" value="8" step="1" id="zoom-slider"
-                        oninput="updateZoom(this.value)">
-                    <span id="zoom-val">8px</span>
-                </div>
-                <label style="margin-left:20px"><input type="checkbox" id="useDefaultWallet" checked> Use Default
-                    Wallet</label>
+        <div class="queue-panel">
+            <h3 id="queue-title" style="margin:0 0 10px 0; font-size:11px; color: var(--text-dim);">TRANSACTION QUEUE
+            </h3>
+            <div id="queue-cubes" class="queue-cubes">
+                <div style="color:rgba(255,255,255,0.2); text-align:center; padding:20px; width:100%;">No pending
+                    actions</div>
             </div>
-            <div id="plot-status" style="font-size: 0.9em; color: #888;">
-                Plots loaded: <span id="loaded-count">0</span>/4
+            <div id="queue-errors" style="margin-top:10px; display:none;">
+                <h4 style="margin:0 0 5px 0; font-size:10px; color: var(--danger);">ERRORS (will retry)</h4>
+                <div id="error-cubes" class="queue-cubes"></div>
             </div>
         </div>
 
-        <div id="grid"></div>
-
-        <div id="tx-panel">
-            <h3 id="change-msg">Changes Detected</h3>
-            <div id="update-queue-container"
-                style="display: none; background: #1a1a1a; padding: 10px; border-radius: 4px; border: 1px solid #444; margin-bottom: 10px; text-align: left;">
-                <div
-                    style="font-size: 0.8em; color: #888; margin-bottom: 5px; text-transform: uppercase; font-weight: bold;">
-                    Update Queue</div>
-                <div id="update-queue-list"></div>
+        <div class="controls-panel">
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label style="font-size:10px; color: var(--text-dim); display:block; margin-bottom:4px">WIF
+                        KEY</label>
+                    <input type="password" id="wif-input" class="wallet-input"
+                        placeholder="Enter your private key (WIF)"
+                        style="width: 100%; background: #020617; border: 1px solid var(--border-color); color: white; padding: 6px; border-radius: 4px; font-size: 11px;"
+                        onchange="refreshWallet()">
+                </div>
+                <div style="flex: 1;">
+                    <label
+                        style="font-size:10px; color: var(--text-dim); display:block; margin-bottom:4px">COMMENT</label>
+                    <input type="text" id="tx-comment" placeholder="Add a comment..."
+                        style="width: 100%; background: #020617; border: 1px solid var(--border-color); color: white; padding: 6px; border-radius: 4px; font-size: 11px;">
+                </div>
+                <div>
+                    <label
+                        style="font-size:10px; color: var(--text-dim); display:block; margin-bottom:4px">PROVIDER</label>
+                    <select id="provider-select"
+                        style="background:#020617; border:1px solid var(--border-color); color:white; padding:5px; border-radius:4px; font-size:11px">
+                        <option value="woc" selected>WOC</option>
+                        <option value="taal">Taal</option>
+                        <option value="scrypt">sCrypt</option>
+                    </select>
+                </div>
             </div>
-            <div class="row">
-                <button id="update-btn" class="action-btn" style="background:#10b981" onclick="sendUpdates()">Update
-                    Modified Plots</button>
-                <button class="action-btn" style="background:#ef4444" onclick="resetAll()">Reset All</button>
+
+            <div class="mode-switch">
+                <button class="mode-btn active" id="paint-mode-btn" onclick="setMode('paint')">PAINT</button>
+                <button class="mode-btn" id="rent-mode-btn" onclick="setMode('rent')">RENT</button>
+                <button class="mode-btn" id="history-mode-btn" onclick="setMode('history')">HISTORY</button>
+            </div>
+
+            <div id="rent-options" style="display:none;">
+                <label style="font-size:10px; color: var(--text-dim); display:block; margin-bottom:4px">RENT
+                    PERIOD</label>
+                <div class="rent-period-selector">
+                    <button class="rent-period-btn" onclick="setRentPeriod(6)">6 blk</button>
+                    <button class="rent-period-btn" onclick="setRentPeriod(36)">36 blk</button>
+                    <button class="rent-period-btn active" onclick="setRentPeriod(144)">1 day</button>
+                    <button class="rent-period-btn" onclick="setRentPeriod(1008)">1 week</button>
+                </div>
+            </div>
+
+            <div id="history-options" style="display:none;">
+                <label style="font-size:10px; color: var(--text-dim); display:block; margin-bottom:4px">RETRIEVE
+                    HISTORY</label>
+                <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:8px;">
+                    <div style="display:flex; gap:5px;">
+                        <input type="number" id="history-start-block" placeholder="Start Blk"
+                            style="flex:1; background:#020617; border:1px solid var(--border-color); color:white; padding:5px; border-radius:4px; font-size:11px">
+                        <input type="number" id="history-end-block" placeholder="End Blk"
+                            style="flex:1; background:#020617; border:1px solid var(--border-color); color:white; padding:5px; border-radius:4px; font-size:11px">
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <input type="number" id="history-limit" value="50" min="10" max="500"
+                            style="width: 50px; background:#020617; border:1px solid var(--border-color); color:white; padding:5px; border-radius:4px; font-size:11px">
+                        <button class="btn-small" style="flex:1"
+                            onclick="loadHistory(document.getElementById('history-limit').value, document.getElementById('history-start-block').value, document.getElementById('history-end-block').value)">RETRIEVE</button>
+                    </div>
+                </div>
+                <div id="history-controls"
+                    style="display:none; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+                        <button class="btn-small" onclick="historyStep(-1)">◀</button>
+                        <input type="range" id="history-slider" min="0" max="0" value="0" style="flex:1;"
+                            oninput="historySeek(this.value)">
+                        <button class="btn-small" onclick="historyStep(1)">▶</button>
+                        <button class="btn-small" id="history-play-btn" onclick="historyTogglePlay()">▶▶</button>
+                    </div>
+                    <div id="history-info" style="font-size:10px; color:var(--text-dim); text-align:center;">
+                        0 / 0
+                    </div>
+                </div>
+            </div>
+
+            <div class="fee-slider-container">
+                <label style="font-size:10px; color: var(--text-dim);">FEE RATE <span class="slider-val"
+                        id="fee-val">100</span> sat/kb</label>
+                <input type="range" id="fee-slider" min="50" max="1000" step="10" value="100"
+                    style="width:100%; height: 4px;" oninput="updateFeeLabel(this.value)">
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:5px">
+                <button class="btn btn-ghost" style="flex:1; padding: 8px; font-size: 12px;"
+                    onclick="resetAll()">RESET</button>
+                <button class="btn btn-success" id="process-btn" style="flex:2; padding: 8px; font-size: 12px;"
+                    onclick="startExecution()">
+                    EXECUTE
+                </button>
             </div>
         </div>
-
-        <div id="status" class="log">Ready.</div>
     </div>
 
     <script src="./deploy/scrypt_bundle.js"></script>
 
     <script>
-        // === Configuration ===
-        const DEFAULT_WIF = "";
-        const PLOT_SIZE = 45;
-        const FULL_SIZE = 90;
-        const STATE_SIZE_BYTES = 506;
-
-        const GRID_CONTRACTS = [
-            "93d5bf6aec4f8cc1c13460e9d54bf47e8fe42f8e64c4d6e7310bb3a31798939e", // TL
-            "e777514773d7b1d07fbeb4dd9654656600569d7660053bfa85a4fd3664d0919a", // TR
-            "55cdca275739f368c9557c1043bad2fcb22bf2306c7a1afd6c2440a4c4797399", // BL
-            "9ee11f2aff692582211c3998fce19e89fd942144109f5982800f44a74afc137b"  // BR
+        const COLORS = [
+            "#FFFFFF", "#000000", "#FF4500", "#FFA800", "#FFD635", "#00A368", "#7EED56", "#2450A4",
+            "#3690EA", "#51E9F4", "#811E9F", "#B44AC0", "#FF99AA", "#9C6926", "#D4D7D9", "#898D90",
+            "#FF3881", "#00756F", "#009EAA", "#493AC1", "#00CC78", "#6D482F", "#6D001A", "#FFF8D8",
+            "#00CCC0", "#94B3FF", "#E4ABFF", "#DE107F", "#FFB470", "#515252", "#BE0039", "#FF96AA"
         ];
 
-        // === State ===
-        let contractInstances = [null, null, null, null];
-        let quadrantCurrent = [new Uint8Array(506), new Uint8Array(506), new Uint8Array(506), new Uint8Array(506)];
-        let quadrantOriginal = [new Uint8Array(506), new Uint8Array(506), new Uint8Array(506), new Uint8Array(506)];
-        let quadrantDirty = [false, false, false, false];
-
-        let selectedColor = 1;
+        // --- STATE ---
+        let plots = []; // 9 plot objects: { index, genesisId, headId, instance, originalPixels, modifiedIndices, queuedRents }
+        let currentPixels = new Uint8Array(196 * 196).fill(0);
+        let selectedColor = 0;
         let isDrawing = false;
+        let currentMode = 'paint'; // 'paint', 'rent', or 'history'
+        let feeRate = 100;
+        let rentPeriod = 144; // Default 1 day (144 blocks)
+        let errorQueue = []; // Plots that failed and need retry with new head
+        let rentInfoPopup = null; // Current rent info popup element
 
-        window.onload = function () {
-            initGrid();
-            selectColor(1);
-            if (window.location.protocol === 'file:') {
-                log("Warning: Running from file:// may cause CORS issues. Use a local server.", "error");
-            }
-            log("Initialized 90x90 grid.");
-            refreshWalletDisplay();
-            setTimeout(loadAllContracts, 500); // Auto-load on enter
+        // History mode state
+        let historyEvents = []; // Array of { txid, timestamp, plotIndex, type, data }
+        let historyIndex = 0;
+        let historyPlaying = false;
+        let historyPlayInterval = null;
+        let historyBasePixels = null; // Pixels before history playback
+        let currentBlockHeight = 0;
+
+        // Pan & Zoom state
+        let scale = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        // --- INIT ---
+        window.onload = () => {
+            initPalette();
+            initPlotsMetadata();
+
+            // Priority 1: UI Shell & Zoom
+            initPanZoom();
+            refreshWallet();
+
+            // Priority 2: Create Grid Nodes (Expensive)
+            setTimeout(() => {
+                initGrid();
+                zoomToPlot(4); // Zoom to central plot immediately
+                addLog("Grid UI initialized. Zoomed to center plot.");
+
+                // Priority 3: Fetch Blockchain Data (Async)
+                loadGrid();
+            }, 100);
+
+            // Start block height refresh timer
+            setInterval(updateBlockHeight, 30000); // Every 30s
+
+            updatePriceLabel();
+            document.getElementById('bottom-shelf').classList.add('visible');
         };
 
-        function decodeBase64(str) {
-            if (!str) return str;
-            // WIFs are 52 chars. Base64 encoded WIFs are ~88 chars.
-            // Only decode if it's long and contains base64-specific characters.
-            if (str.length > 60 && (str.includes('=') || str.includes('+') || str.includes('/'))) {
-                try {
-                    const decoded = atob(str);
-                    if (decoded.length >= 50) return decoded;
-                } catch (e) { }
-            }
-            return str;
-        }
-
-        async function refreshWalletDisplay() {
+        async function updateBlockHeight() {
             try {
-                const { bsv } = ScryptBundle;
-                const wif = decodeBase64(getWif());
-                if (!wif) return;
-
-                const priv = bsv.PrivateKey.fromWIF(wif);
-                const addr = priv.toAddress().toString();
-                document.getElementById('wallet-addr').innerText = addr.substring(0, 8) + '...' + addr.substring(addr.length - 4);
-                document.getElementById('wallet-addr').title = addr;
-
-                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`);
-                if (!res.ok) throw new Error("API Limit reached");
-                const data = await res.json();
-                const total = (data.confirmed || 0) + (data.unconfirmed || 0);
-                document.getElementById('wallet-balance').innerText = total;
-
-                if (total < 2000) {
-                    log("Warning: Low wallet balance. Each plot update costs ~1000-1500 sats.", "error");
+                const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/chain/info');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.blocks > currentBlockHeight) {
+                        currentBlockHeight = data.blocks;
+                        console.log("Current Block Height:", currentBlockHeight);
+                        if (currentMode === 'rent') showRentedQuadrants();
+                    }
                 }
-            } catch (e) {
-                log("Wallet Error: " + e.message, "error");
+            } catch (e) { console.error("Height update failed:", e); }
+        }
+
+        function initPlotsMetadata() {
+            // 5x5 Grid with BSVAL Graffiti Image (25 plots)
+            // Shared init_id: BSVAL_GRAFFITI_3X3 (Legacy ID kept)
+            // Row 0: 0, 1, 2, 9, 16
+            // Row 1: 3, 4, 5, 10, 17
+            // Row 2: 6, 7, 8, 11, 18
+            // Row 3: 12, 13, 14, 15, 19
+            // Row 4: 20, 21, 22, 23, 24
+            const meta = [
+                {
+                    "index": 0,
+                    "owner": "1P4W5w2bL6wEmjrJfgUy37naivcXQduqNq",
+                    "txid": "8b4dc8af57b2974a413ec6fe99ff8a3e5ea34ca7045c39af5aac84e8fc340a40"
+                },
+                {
+                    "index": 1,
+                    "owner": "17FK3tdKqa5vD2VLFw9gECasDSVfPKKzgM",
+                    "txid": "a98637337a29306b9bf431586562898c6c09f5d1882615ddf45d46449f11ea5e"
+                },
+                {
+                    "index": 2,
+                    "owner": "114aQeouD8puU1m4QcTBXA7Zam8CYuGDDi",
+                    "txid": "1f868a883cfb2d5c008fa2689f442400a2898395b273250d2033604b67e267a6"
+                },
+                {
+                    "index": 9,
+                    "owner": "1HPU58vxvwr9gg2Fh6obvw7cedPVUpQacY",
+                    "txid": "3c3e5411cabc58a10ea958479318fe9e17c2fe7a372a6138b5b4214c2f5e9601"
+                },
+                {
+                    "index": 16,
+                    "owner": "1CTrUetoWrEGXLSzCcL3CXwU7gF7g2PWE4",
+                    "txid": "13eb0148af862427c9414b89897587d3b85f4ae34c422c87a6a7bb9a6fe3f45a"
+                },
+                {
+                    "index": 25,
+                    "owner": "1LR1SG389pvW2cdeyX5tZcRn6ZeQEQD7KH",
+                    "txid": "cc72867dea2918cd4ddfc2bb9904151b55e5934a76439519dea1df3599dc05e7"
+                },
+                {
+                    "index": 36,
+                    "owner": "1QAVYFVFyMrjdzinNdT5NcQBnejisiXDDV",
+                    "txid": "83676b887d9d5e9042c1e43a2fc1cf1656b34a722996300cde16a3a57b7621d1"
+                },
+                {
+                    "index": 3,
+                    "owner": "1PGNR2KMikwwN9m1rvNAgZBCBrZUr5eHbJ",
+                    "txid": "a93cb7d27575edde0fd5594669e23c0c526a4843e7b979fa4c7a64462e5cd2ad"
+                },
+                {
+                    "index": 4,
+                    "owner": "15pRFCaqTZZS1atfxyeJ9AAPK3fVYbuAAV",
+                    "txid": "269aabf8975efbaa7fbd5179c931b193ce147aa2a24bb6f9b95cc51a54258a23"
+                },
+                {
+                    "index": 5,
+                    "owner": "1Ab9TYd3ht1vXQMb3v64FY3iAkpowr7hJJ",
+                    "txid": "90c1f206a79cb760c35eee1478c5498c16881752e2aba6a5a73122bd54cc78a1"
+                },
+                {
+                    "index": 10,
+                    "owner": "1GfrZQHrv2o9CrPLW3t45j7ePGG1hvxB4r",
+                    "txid": "c71cde889be3c4a5a7336d1f5cfcc61bd84bf94565eb6691f9b9f7d20f025233"
+                },
+                {
+                    "index": 17,
+                    "owner": "17VYrhG27V2tMB3Jv9rmMHoDaV32BNmtre",
+                    "txid": "7794ffe1f5af636119c9cd12eb84d29561b4330d2a1ab212bb03d2a9a5965fc3"
+                },
+                {
+                    "index": 26,
+                    "owner": "173Q8MrfKG2SpSYLPSmwE8bx4zsPYaNE1z",
+                    "txid": "23b9f9050bba6cf726b4078a60e982b84279d30b7baaf574603aeda1ac2e1fd8"
+                },
+                {
+                    "index": 37,
+                    "owner": "1EDfN4gdL5Q9AgFXLCcgRBsBDf37he8Rm2",
+                    "txid": "7269446f6d7edbc9cc60e66c668e5ea3b6d34a9e9f4c6921515658a06dfa893b"
+                },
+                {
+                    "index": 6,
+                    "owner": "1GQX8HfxPRREEbCjy3Vbp57CyfhHdo3Yes",
+                    "txid": "423075e2f3e3cdb2a641c15f37fe67302a647d24f51bba5c0bd4d5cbf77541bf"
+                },
+                {
+                    "index": 7,
+                    "owner": "13gqJQv6srBua5MAKwVK6jLRKqnQivQpju",
+                    "txid": "a246929ce2377e5400f4afc86e455ab2adf8b6cc3e1782395c76a4619471ed65"
+                },
+                {
+                    "index": 8,
+                    "owner": "16p13WZgWGqENoFvoaQ1kexT2ZEXBYfw3b",
+                    "txid": "2b030ed8604f99ac247983c24c3555d810126262c4a04493c03573bad84251f5"
+                },
+                {
+                    "index": 11,
+                    "owner": "13Q7EjhxxU79xwHCZSjx5BcRJPtwBHM1wi",
+                    "txid": "12a1ecc41fd973f7a62ed6646f624e8d03cfb4e29fba37a41b111ff670b1a9e9"
+                },
+                {
+                    "index": 18,
+                    "owner": "1J5m332nTUE1L1qHh6SLJyAzyRorcDAJsi",
+                    "txid": "390192516dbda540a856f4242303a8fd9131bee3a4b92088dabb2f1122f02d32"
+                },
+                {
+                    "index": 27,
+                    "owner": "1BH8cDuc6LLgkndxoTgnV1P6VHsnLMj123",
+                    "txid": "9e25e3e74428c10522c91b329c7694fe05f6478fb5735a48413172fa4442e0cb"
+                },
+                {
+                    "index": 38,
+                    "owner": "1MHnZFU1SaJ1pgHFZCQAMM3BQqZSm8EnzR",
+                    "txid": "a7cc04987982a2c11983efc41f40c5e7b626f9ba29576e41a713e03e57dd54b5"
+                },
+                {
+                    "index": 12,
+                    "owner": "121CH8s6r7xbS6SmPfbYY1M6k6HLxTP5D3",
+                    "txid": "459cc2e203f9e5d2220f922d01f59ed74a24d773430ceeb3da1d0f71999972ff"
+                },
+                {
+                    "index": 13,
+                    "owner": "19MB7X2DdWhuf8mYvi1QXPocdkivi726qX",
+                    "txid": "37d01fbe06f4c11448c6237afafeb34cd47a014a5ba56b7ddb4261789f840fa6"
+                },
+                {
+                    "index": 14,
+                    "owner": "1GqKQvHq7Yd127ZHZoQqod2hZsF8iDFneW",
+                    "txid": "f2664c289e5683876093fca4086e613d26e08a1354e9b472f7a355d2b54b7320"
+                },
+                {
+                    "index": 15,
+                    "owner": "1C1U2X9U74CVd1WQrFQianAbFrPtcTdCyE",
+                    "txid": "53b6724398fd8eed7d8c9375b5a4b81863a815f849892a02cecee5b14cac84b6"
+                },
+                {
+                    "index": 19,
+                    "owner": "13LrNQNfYo14i6w4wHJpq97VjEcm12Uuix",
+                    "txid": "23d777898c4be1b48b3af119f9517d0bd9efc4f5164c1979b416140414d5ab69"
+                },
+                {
+                    "index": 28,
+                    "owner": "17BU6J2bQUtf98nj3YP4L43aFhjCPAixDS",
+                    "txid": "72dd9af34257bbe9538fef3de169b387c3df87dc6c7d5c81ad2c6c7d67bc6217"
+                },
+                {
+                    "index": 39,
+                    "owner": "1H94vK88GPFEQ1kXN3zgkdM2sh5dxbUgAc",
+                    "txid": "5c3e2ec54837aa4f3c675ea95ecc8868abe341ecd30cde89ac6eae3880d29356"
+                },
+                {
+                    "index": 20,
+                    "owner": "1PJ2UJkiWrP3KtEQi8TrGtaZquipDAGF4Q",
+                    "txid": "76b73f9f11b0809358919756296a2fde01c01c3d5bd6fa2518a9e49f5bb949c8"
+                },
+                {
+                    "index": 21,
+                    "owner": "1CRUGtrHJ1jugxy5kG6V1Bv7YgowXHSRru",
+                    "txid": "7fa27c8a3c9fc57940b8f13d3edde5e0c9cf0806cad92dbc76b1def6075dc1a3"
+                },
+                {
+                    "index": 22,
+                    "owner": "1KjNE68uihpR2efpL2MiezaCykcctQGjr6",
+                    "txid": "e3e446d3b087758a75556af1d6d112fad96eeb231204b158b0d2105146669942"
+                },
+                {
+                    "index": 23,
+                    "owner": "1DXEArxYN2UwPAmFjSMg6bjPpafXzS4nt2",
+                    "txid": "8779822d2619953a1c5f4300d968e3eb756c46385ec73a91c0abffe2de35f328"
+                },
+                {
+                    "index": 24,
+                    "owner": "1M1DDEbvcJCnmvLUVqSENWX7qTsVCAxrpc",
+                    "txid": "370d02c32ee97ba0969ed3b4ffe86c630780fd9ff35f5cb1dd72a3e99d03313f"
+                },
+                {
+                    "index": 29,
+                    "owner": "1KdhFc8fy73gCJEg6gnKaB6EEvr3Y5EYUt",
+                    "txid": "bf8f0d3d0e86fab3f390991c988adc87fcadcb4e0419df3c42d17a661deed092"
+                },
+                {
+                    "index": 40,
+                    "owner": "1Bo4cGSVfR1bL2ouz37AC2ktGri1wC6XZq",
+                    "txid": "94c836af70190b699ecb18cf259f1d35f18d998d551e22610a356255f309e38c"
+                },
+                {
+                    "index": 30,
+                    "owner": "1M7Pr2eMNUZxTS4PUHCzfiJaUBt1wmC4x7",
+                    "txid": "d71393d6f28cbde94042ce0444f38c78075adb67980c5ff706fbd2c87b0c398b"
+                },
+                {
+                    "index": 31,
+                    "owner": "1AWbrPfUzkZ47j1HjcoQBiMtiJCXM3m3bT",
+                    "txid": "7f6e1620c349f292b0cfbdc05b715b7191b1aadaa63dc71c12871f91dab26daf"
+                },
+                {
+                    "index": 32,
+                    "owner": "1FjJdKdn1jS7PYdn7uZf1UKp6zp1oYU2bG",
+                    "txid": "9228a475e2d9f15a4d7a6df837500372e16c2c16014923163b47146bb5e13cb8"
+                },
+                {
+                    "index": 33,
+                    "owner": "17hD2jMZFXp8w9Uu1anPQNHPBgQ6dRJvv",
+                    "txid": "a04d5916433207d74f0bd0c3045c1d983b68db00078672f4bbfebf4cb080e0c1"
+                },
+                {
+                    "index": 34,
+                    "owner": "1LxCnT7jg6eFE7SX9nBaNvTvmjDYeBWvp1",
+                    "txid": "1f554e896f8ab2550adecb155b39d010781fe90c1d78db08d00315f8eff22fd6"
+                },
+                {
+                    "index": 35,
+                    "owner": "168nPQmMDXHF4SKyEsrkyLsLiLspYFUB2c",
+                    "txid": "6906e7146502b74529d480492e4c6ae5043325b8db81922a6332f9c3130aea9c"
+                },
+                {
+                    "index": 41,
+                    "owner": "1PgG2sJPuZbB7dngMyJNfa7xvcjEHytRuf",
+                    "txid": "70cb53d58f7e2f30eef7baa750c611d648e6e91e17275c9b5f8152b1ae544955"
+                },
+                {
+                    "index": 42,
+                    "owner": "19j8sJASHckHjSp9Y6kDJFrYYo4S6qGN25",
+                    "txid": "92ae1e1d43731cad802eac2f7feb143a03352027133fc4b9162f4e3256791ccd"
+                },
+                {
+                    "index": 43,
+                    "owner": "1P1RkyvvZL4DzBzHsF6cBqAQPs9xsyBDxc",
+                    "txid": "2dbbd2f4ccfd7651ae10528266dd9f10b0adac2e8bed88eae37eeb6265a9d3df"
+                },
+                {
+                    "index": 44,
+                    "owner": "1J1Ph1MTpqv1ePA11Y94cuje7xtb11FsXN",
+                    "txid": "05417a4b11133101b1813ffc165cb2b5bd6080fd7d0c57f2224e5ab1a49858d5"
+                },
+                {
+                    "index": 45,
+                    "owner": "12Qr6dpJf9kHYFHaxGkjWCyqVCZTeuaH6k",
+                    "txid": "6f73f5f7a8d677d45ded898874db2cecaf9825aaea52c0c3393cfbf5526773fa"
+                },
+                {
+                    "index": 46,
+                    "owner": "1GJzCN2zbQ9ff5BuEsoYRHZA1Nkh2EzbdL",
+                    "txid": "672aa3e340fdf93972554fc8c074d9d1a079da301cdd506ffa73401970a7e477"
+                },
+                {
+                    "index": 47,
+                    "owner": "1HyALrfXKx5f1Z3329W1DCPWNKGEYLP81f",
+                    "txid": "0030af45022d3ca434229a9e823adcccdef4c2e36a3f0943d3a2082a7680d4b4"
+                },
+                {
+                    "index": 48,
+                    "owner": "16f1arM1pHLeRqDzYzmLhdDkGsa6y6V8Az",
+                    "txid": "bd3ee53f2fccba4ce535489f13b2b18755a94d783de9612ed58e70691272fc12"
+                }
+            ];
+            plots = meta.map(m => ({
+                index: m.index,
+                owner: m.owner,
+                genesisId: m.txid,
+                headId: m.txid,
+                instance: null,
+                originalPixels: new Uint8Array(28 * 28).fill(0),
+                modifiedIndices: new Set(),
+                queuedRents: new Set() // Can select multiple quadrants (0-3)
+            }));
+        }
+
+        async function loadGrid() {
+            addLog("Syncing Grid...");
+
+            // Phase 1: Center 3x3 (Plots 0-8)
+            const centerPlots = plots.filter(p => p.index < 9);
+            addLog(`Phase 1: Syncing Center 3x3 (${centerPlots.length} plots)...`);
+            await syncSubset(centerPlots);
+            addLog("Center 3x3 Ready!", "success");
+
+            // Render what we have immediately
+            drawGridOverlays();
+            showRentedQuadrants();
+
+            // Phase 2: Extension (Plots 9-24)
+            const extensionPlots = plots.filter(p => p.index >= 9);
+            if (extensionPlots.length > 0) {
+                addLog(`Phase 2: Syncing Extension (${extensionPlots.length} plots)...`);
+                // Small delay to let UI breathe
+                await new Promise(r => setTimeout(r, 100));
+                await syncSubset(extensionPlots);
             }
+
+            // Finalize
+            await updateBlockHeight();
+            drawGridOverlays();
+            showRentedQuadrants();
+            addLog("Grid Sync Complete!", "success");
         }
 
-        function getWif() {
-            const input = document.getElementById('wif-input').value.trim();
-            if (input) return input;
-            return DEFAULT_WIF;
-        }
+        async function syncSubset(targetPlots) {
+            const { bsv, PixelPlot28 } = ScryptBundle;
 
-        function applyNewWif() {
-            log("Applying new WIF...");
-            refreshWalletDisplay();
-            log("Wallet updated.");
-        }
+            // 1. Resolve heads (Fast Spent Check)
+            addLog(`Following chains for ${targetPlots.length} plots...`);
+            const headIds = targetPlots.map(p => p.headId);
+            const currentHeads = await fetchLatestTxidsBulk(headIds);
+            targetPlots.forEach((p, i) => p.headId = currentHeads[i]);
 
-        let globalProvider = null;
-        function getProvider() {
-            if (!globalProvider) {
-                const { DefaultProvider, bsv } = ScryptBundle;
-                globalProvider = new DefaultProvider({ network: bsv.Networks.mainnet });
-            }
-            return globalProvider;
-        }
+            // 2. Fetch all transaction data in bulk
+            addLog(`Fetching hex data...`);
+            const txDataMap = await fetchBulkHexDirect(targetPlots.map(p => p.headId));
 
-        function log(msg) {
-            const el = document.getElementById('status');
-            const time = new Date().toLocaleTimeString();
-            el.innerText = `[${time}] ${msg}\n` + el.innerText;
-            console.log(`[${time}] ${msg}`);
-        }
+            // 3. Loop in chunks to prevent UI freeze
+            const chunkSize = 2; // Process 2 plots per frame
+            let processIndex = 0;
 
-        async function fetchBulkHex(txids) {
-            if (txids.length === 0) return [];
-            try {
-                const url = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
-                const resp = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ txids })
-                });
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                return await resp.json();
-            } catch (e) {
-                log(`Bulk fetch failed: ${e.message}. Falling back to individual requests...`);
-                return [];
-            }
-        }
+            function processNextChunk() {
+                const chunkStart = processIndex;
+                const chunkEnd = Math.min(processIndex + chunkSize, targetPlots.length);
 
-        function initGrid() {
-            const grid = document.getElementById('grid');
-            grid.innerHTML = '';
-            for (let y = 0; y < FULL_SIZE; y++) {
-                for (let x = 0; x < FULL_SIZE; x++) {
-                    const d = document.createElement('div');
-                    d.className = 'pixel c0';
-                    if (x === PLOT_SIZE - 1) d.classList.add('border-r');
-                    if (y === PLOT_SIZE - 1) d.classList.add('border-b');
+                for (let i = chunkStart; i < chunkEnd; i++) {
+                    const plot = targetPlots[i];
+                    const hex = txDataMap[plot.headId];
+                    if (hex) {
+                        try {
+                            const tx = new bsv.Transaction(hex);
+                            plot.instance = PixelPlot28.fromTx(tx, 0);
+                            decodePlotState(plot, false);
+                        } catch (e) { console.error(`Failed to parse plot ${plot.index}`, e); }
+                    }
+                }
 
-                    const idx = y * FULL_SIZE + x;
-                    d.id = 'p' + idx;
-                    d.onmousedown = () => { isDrawing = true; paintPixel(x, y); };
-                    d.onmouseenter = () => { if (isDrawing) paintPixel(x, y); };
-                    grid.appendChild(d);
+                processIndex += chunkSize;
+                if (processIndex < targetPlots.length) {
+                    requestAnimationFrame(processNextChunk);
                 }
             }
-            window.addEventListener('mouseup', () => { isDrawing = false; });
-        }
 
-        function selectColor(c) {
-            selectedColor = c;
-            document.querySelectorAll('.palette-item').forEach((item, i) => {
-                const btn = item.querySelector('.palette-btn');
-                btn.classList.toggle('selected', i === c);
+            await new Promise(resolve => {
+                // Override the recursive 'processNextChunk' to resolve when done
+                const originalProcess = processNextChunk;
+                processNextChunk = function () {
+                    originalProcess();
+                    if (processIndex >= targetPlots.length) resolve();
+                }
+                processNextChunk();
             });
         }
 
-        function updateZoom(val) {
-            document.documentElement.style.setProperty('--pixel-size', val + 'px');
-            document.getElementById('zoom-val').innerText = val + 'px';
-        }
-
-        function paintPixel(x, y) {
-            const qX = Math.floor(x / PLOT_SIZE);
-            const qY = Math.floor(y / PLOT_SIZE);
-            const quadrant = qY * 2 + qX;
-
-            const relX = x % PLOT_SIZE;
-            const relY = y % PLOT_SIZE;
-            const relIdx = relY * PLOT_SIZE + relX;
-
-            const byteIdx = Math.floor(relIdx / 4);
-            const bitOffset = (3 - (relIdx % 4)) * 2;
-
-            let byte = quadrantCurrent[quadrant][byteIdx];
-            byte &= ~(0x03 << bitOffset);
-            byte |= (selectedColor << bitOffset);
-            quadrantCurrent[quadrant][byteIdx] = byte;
-
-            // UI
-            document.getElementById('p' + (y * FULL_SIZE + x)).className =
-                `pixel c${selectedColor}` +
-                (x === PLOT_SIZE - 1 ? ' border-r' : '') +
-                (y === PLOT_SIZE - 1 ? ' border-b' : '');
-
-            checkDirty();
-        }
-
-        function checkDirty() {
-            let anyDirty = false;
-            let dirtyCount = 0;
-            for (let q = 0; q < 4; q++) {
-                let d = false;
-                for (let i = 0; i < 506; i++) {
-                    if (quadrantCurrent[q][i] !== quadrantOriginal[q][i]) {
-                        d = true; break;
-                    }
-                }
-                quadrantDirty[q] = d;
-                if (d) { anyDirty = true; dirtyCount++; }
-            }
-
-            document.getElementById('tx-panel').style.display = anyDirty ? 'block' : 'none';
-            document.getElementById('change-msg').innerText = `${dirtyCount} plot(s) modified.`;
-        }
-
         async function fetchLatestTxidsBulk(txids) {
+            addLog(`Following ${txids.length} txids...`);
             let current = [...txids];
-            let results = [...txids];
             let finished = new Array(txids.length).fill(false);
 
-            // Limited iterations to avoid infinite loops if API is weird
             for (let iter = 0; iter < 50; iter++) {
                 const toCheck = [];
                 const checkIndices = [];
                 for (let i = 0; i < current.length; i++) {
-                    if (!finished[i]) {
-                        toCheck.push({ txid: current[i], vout: 0 });
+                    const id = current[i];
+                    if (!finished[i] && id && id.length === 64) {
+                        toCheck.push({ txid: id, vout: 0 });
                         checkIndices.push(i);
+                    } else if (!finished[i]) {
+                        finished[i] = true;
                     }
                 }
+
                 if (toCheck.length === 0) break;
 
-                try {
-                    const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ utxos: toCheck })
-                    });
-                    if (!resp.ok) {
-                        checkIndices.forEach(idx => finished[idx] = true);
-                        break;
-                    }
-                    const data = await resp.json();
-                    if (!Array.isArray(data)) {
-                        checkIndices.forEach(idx => finished[idx] = true);
-                        break;
-                    }
-
-                    const dataMap = {};
-                    data.forEach(item => { if (item.utxo) dataMap[item.utxo.txid] = item; });
-
-                    let madeProgress = false;
-                    for (let i = 0; i < checkIndices.length; i++) {
-                        const idx = checkIndices[i];
-                        const txid = current[idx];
-                        const item = dataMap[txid];
-
-                        if (item && item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
-                            const nextTxid = item.spentIn.txid || item.spentIn.tx_hash;
-                            current[idx] = nextTxid;
-                            results[idx] = nextTxid;
-                            madeProgress = true;
-                        } else {
-                            finished[idx] = true;
-                        }
-                    }
-                    if (!madeProgress) break;
-                } catch (e) {
-                    console.error("Bulk check failed", e);
-                    checkIndices.forEach(idx => finished[idx] = true);
-                    break;
-                }
-            }
-            return results;
-        }
-
-        async function loadAllContracts() {
-            log("Loading all 4 plots and following chain...");
-
-            try {
-                // Follow the chain using bulk API for all plots
-                const latestTxids = await fetchLatestTxidsBulk(GRID_CONTRACTS);
-                const hexResults = await fetchBulkHex(latestTxids);
-
-                let loaded = 0;
-                // Create a map for easy lookup
-                const hexMap = {};
-                hexResults.forEach(r => { if (r && r.hex) hexMap[r.txid] = r.hex; });
-
-                for (let i = 0; i < 4; i++) {
-                    const txid = latestTxids[i];
-                    const hex = hexMap[txid];
-
+                // Batch the spent check (Whatsonchain limit is usually 20)
+                let madeProgressInIter = false;
+                for (let b = 0; b < toCheck.length; b += 20) {
+                    const batch = toCheck.slice(b, b + 20);
+                    const batchIndices = checkIndices.slice(b, b + 20);
                     try {
-                        if (hex) {
-                            await loadPlotFromHex(i, hex);
-                        } else {
-                            log(`Hex missing for ${txid}, trying individual fetch...`);
-                            await loadPlot(i, txid);
+                        const body = JSON.stringify({ utxos: batch });
+                        const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: body
+                        });
+
+                        if (!resp.ok) {
+                            const errText = await resp.text();
+                            addLog(`Spent check failed: ${errText.substring(0, 50)}`, "error");
+                            console.error("Payload causing 400:", body);
+                            continue;
                         }
-                        loaded++;
-                        document.getElementById('loaded-count').innerText = loaded;
+
+                        const data = await resp.json();
+                        data.forEach((item, idx) => {
+                            const originalIdx = batchIndices[idx];
+                            if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
+                                current[originalIdx] = item.spentIn.txid || item.spentIn.tx_hash;
+                                madeProgressInIter = true;
+                            } else {
+                                finished[originalIdx] = true;
+                            }
+                        });
                     } catch (e) {
-                        log(`Failed to load plot ${i} (${txid.substring(0, 8)}): ${e.message}`);
+                        addLog(`Spent check error: ${e.message}`, "error");
                     }
                 }
-                log("Load complete.");
-            } catch (e) {
-                log(`Bulk load failed: ${e.message}`);
-                // Fallback to old method if everything fails
-                for (let i = 0; i < 4; i++) {
-                    try { await loadPlot(i); } catch (e) { }
-                }
+                if (!madeProgressInIter) break;
             }
+            return current;
         }
 
-        async function loadPlotFromHex(q, hex) {
-            const { PixelPlot45, bsv } = ScryptBundle;
-            const tx = new bsv.Transaction(hex);
-            const instance = PixelPlot45.fromTx(tx, 0);
+        async function fetchBulkHexDirect(txids) {
+            // Sanitize: unique, 64-char hex only
+            const cleanIds = [...new Set(txids.filter(id => id && id.length === 64))];
+            if (cleanIds.length === 0) return {};
 
-            contractInstances[q] = instance;
-            const bytes = hexToBytes(instance.pixels);
-            quadrantOriginal[q] = new Uint8Array(bytes);
-            quadrantCurrent[q] = new Uint8Array(bytes);
-
-            renderQuadrant(q, bytes);
-        }
-
-        async function loadPlot(q, txid) {
+            addLog(`Fetching ${cleanIds.length} unique HEXs...`);
             try {
-                if (!txid) txid = GRID_CONTRACTS[q];
-                const { PixelPlot45 } = ScryptBundle;
-                const provider = getProvider();
-                const tx = await provider.getTransaction(txid);
-                const instance = PixelPlot45.fromTx(tx, 0);
-                contractInstances[q] = instance;
+                const body = JSON.stringify({ txids: cleanIds });
+                const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/txs/hex', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: body
+                });
 
-                const bytes = hexToBytes(instance.pixels);
-                quadrantOriginal[q] = new Uint8Array(bytes);
-                quadrantCurrent[q] = new Uint8Array(bytes);
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    addLog(`Fetch HEX 400: ${errText.substring(0, 50)}`, "error");
+                    console.error("Body sent:", body);
+                    throw new Error(`Bulk fetch failed (${resp.status}): ${errText}`);
+                }
 
-                renderQuadrant(q, bytes);
+                const data = await resp.json();
+                const map = {};
+                data.forEach(item => {
+                    if (item && item.txid && item.hex) {
+                        map[item.txid] = item.hex;
+                    }
+                });
+                return map;
             } catch (e) {
-                log(`Failed to fetch/parse plot ${q}: ${e.message}`, "error");
+                addLog(`HEX Fetch Error: ${e.message}`, "error");
+                throw e;
             }
         }
 
-        function renderQuadrant(q, bytes) {
-            const startX = (q % 2) * PLOT_SIZE;
-            const startY = Math.floor(q / 2) * PLOT_SIZE;
-
-            for (let i = 0; i < PLOT_SIZE * PLOT_SIZE; i++) {
-                const byteIdx = Math.floor(i / 4);
-                const bitOffset = (3 - (i % 4)) * 2;
-                const val = (bytes[byteIdx] >> bitOffset) & 0x03;
-
-                const relX = i % PLOT_SIZE;
-                const relY = Math.floor(i / PLOT_SIZE);
-                const absX = startX + relX;
-                const absY = startY + relY;
-
-                const el = document.getElementById('p' + (absY * FULL_SIZE + absX));
-                if (el) {
-                    el.className = `pixel c${val}` +
-                        (absX === PLOT_SIZE - 1 ? ' border-r' : '') +
-                        (absY === PLOT_SIZE - 1 ? ' border-b' : '');
+        async function findHead(txid, outIdx = 0) {
+            try {
+                const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ utxos: [{ txid, vout: outIdx }] })
+                });
+                const data = await resp.json();
+                const info = data[0];
+                if (info && info.spentIn) {
+                    return findHead(info.spentIn.txid || info.spentIn.tx_hash, 0);
                 }
+                return txid;
+            } catch (e) { return txid; }
+        }
+
+        async function fetchBulkSpent(utxos) {
+            const url = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
+            // Use corsproxy.io for smaller POST requests
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ utxos })
+            });
+            return await res.json();
+        }
+
+        function drawGridOverlays() {
+            const overlay = document.getElementById('quadrant-overlay');
+            overlay.innerHTML = '';
+            const pixelSize = 5;
+
+            // 1. Draw Plot Boundaries (7x7 grid - every 28 pixels)
+            for (let i = 1; i < 7; i++) {
+                const pos = i * 28 * pixelSize;
+
+                // Horizontal Plot Line
+                const hLine = document.createElement('div');
+                hLine.className = 'plot-grid-line';
+                hLine.style.cssText = `position:absolute; top:${pos}px; left:0; right:0; height:2px; background:rgba(255,255,255,0.3); pointer-events:none; z-index:21;`;
+                overlay.appendChild(hLine);
+
+                // Vertical Plot Line
+                const vLine = document.createElement('div');
+                vLine.className = 'plot-grid-line';
+                vLine.style.cssText = `position:absolute; left:${pos}px; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.3); pointer-events:none; z-index:21;`;
+                overlay.appendChild(vLine);
+            }
+
+            // 2. Draw Quadrant Subdivisions (2x2 within each plot - every 14 pixels)
+            // 7 plots * 2 quadrants = 14 quadrants per row/col.
+            // But we can just iterate every 14 pixels * pixelSize
+            // Total grid size 196 pixels. 196/14 = 14.
+            // So lines at 14, 42, 70, 98, 126, 154, 182
+            const quadLines = [14, 42, 70, 98, 126, 154, 182];
+            quadLines.forEach(p => {
+                const pos = p * pixelSize;
+                // Horizontal Quadrant Line
+                const hLine = document.createElement('div');
+                hLine.className = 'quadrant-grid-line';
+                hLine.style.cssText = `position:absolute; top:${pos}px; left:0; right:0; height:1px; background:rgba(255,255,255,0.1); pointer-events:none; z-index:20;`;
+                overlay.appendChild(hLine);
+
+                // Vertical Quadrant Line
+                const vLine = document.createElement('div');
+                vLine.className = 'quadrant-grid-line';
+                vLine.style.cssText = `position:absolute; left:${pos}px; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.1); pointer-events:none; z-index:20;`;
+                overlay.appendChild(vLine);
+            });
+        }
+
+        async function syncPlot(plot) {
+            const { PixelPlot28, bsv } = ScryptBundle;
+            try {
+                const provider = await getProvider();
+                const wif = getWif();
+                const addr = bsv.PrivateKey.fromWIF(wif).toAddress().toString();
+
+                const headId = await findHead(plot.genesisId, 0, addr);
+                plot.headId = headId;
+
+                const tx = await provider.getTransaction(headId);
+                plot.instance = PixelPlot28.fromTx(tx, 0);
+
+                decodePlotState(plot, true);
+            } catch (e) {
+                addLog(`Plot ${plot.index} sync failed: ${e.message}`, "error");
             }
         }
 
-        async function sendUpdates() {
-            const btn = document.getElementById('update-btn');
-            if (btn) btn.disabled = true;
-
-            const { PixelPlot45, TestWallet, bsv, DefaultProvider, toByteString, Utils } = ScryptBundle;
-
-            let privateKey = bsv.PrivateKey.fromWIF(decodeBase64(getWif()));
-            const provider = getProvider();
-            const signer = new TestWallet(privateKey, provider);
-
-            let totalFeesSpent = 0;
-            const queueContainer = document.getElementById('update-queue-container');
-            const queueList = document.getElementById('update-queue-list');
-            queueContainer.style.display = 'block';
-            queueList.innerHTML = '';
-
-            const dirtyIndices = [];
-            for (let q = 0; q < 4; q++) {
-                if (quadrantDirty[q]) {
-                    dirtyIndices.push(q);
-                    const item = document.createElement('div');
-                    item.id = `queue-item-${q}`;
-                    item.style.fontSize = '12px';
-                    item.style.padding = '4px 0';
-                    item.style.color = '#888';
-                    item.innerHTML = `Plot ${q}: <span class="status">Waiting...</span>`;
-                    queueList.appendChild(item);
-                }
+        function decodePlotState(plot, resetEdits = true) {
+            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
+            let n = 0n;
+            for (let i = 0; i < rawHex.length; i += 2) {
+                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                n |= (byte << (BigInt(i / 2) * 8n));
             }
 
-            if (dirtyIndices.length === 0) {
-                queueContainer.style.display = 'none';
-                if (btn) btn.disabled = false;
+            // Batch DOM updates for better performance
+            requestAnimationFrame(() => {
+                for (let i = 0; i < 784; i++) {
+                    const color = Number((n >> (BigInt(i) * 5n)) & 31n);
+                    plot.originalPixels[i] = color;
+
+                    const globalIdx = getGlobalIdxFromLocal(plot, i);
+                    if (resetEdits || !plot.modifiedIndices.has(i)) {
+                        currentPixels[globalIdx] = color;
+                        const el = document.getElementById(`p${globalIdx}`);
+                        if (el) {
+                            el.style.backgroundColor = COLORS[color];
+                            el.classList.add('is-filled');
+                        }
+                    }
+                }
+                if (resetEdits) {
+                    plot.modifiedIndices.clear();
+                }
+                updateQueueUI();
+            });
+        }
+
+        function initPalette() {
+            const container = document.getElementById('palette');
+            COLORS.forEach((c, i) => {
+                const div = document.createElement('div');
+                div.className = 'swatch' + (i === 0 ? ' selected' : '');
+                div.style.backgroundColor = c;
+                div.onclick = () => selectColor(i);
+                container.appendChild(div);
+            });
+        }
+
+        // Canvas Context
+        let ctx = null;
+
+        function initGrid() {
+            const container = document.getElementById('grid');
+            container.innerHTML = ''; // Clear existing
+            // CSS handles grid layout, remove grid-template-columns style
+            container.style.display = 'block';
+
+            const canvas = document.createElement('canvas');
+            canvas.id = 'grid-canvas';
+            canvas.width = 196;
+            canvas.height = 196;
+            // Scale up with CSS to match pixel-size (5px per pixel)
+            canvas.style.width = (196 * 5) + 'px';
+            canvas.style.height = (196 * 5) + 'px';
+            canvas.style.imageRendering = 'pixelated'; // Crisp pixels
+
+            container.appendChild(canvas);
+            ctx = canvas.getContext('2d', { alpha: false }); // No transparency needed = faster
+
+            // Initialize white background
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 196, 196);
+
+            // Interaction Overlay (for events) or bind directly to canvas?
+            // Binding to container/viewport catches events, but mapping needs to be precise.
+            // Let's attach to canvas.
+            // Note: Pan/Zoom happens on #grid-container which contains #grid.
+            // Event coordinates need to account for this.
+
+            setupCanvasInteractions();
+            window.addEventListener('mouseup', () => isDrawing = false);
+        }
+
+        function getPixelIndexFromEvent(e) {
+            const rect = document.getElementById('grid-canvas').getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const pixelX = Math.floor(x / (rect.width / 196));
+            const pixelY = Math.floor(y / (rect.height / 196));
+
+            if (pixelX < 0 || pixelX >= 196 || pixelY < 0 || pixelY >= 196) return -1;
+            return pixelY * 196 + pixelX;
+        }
+
+        // --- Replacing Interaction Handlers ---
+        // Bind these in setupEventListeners() or ensure called after initGrid
+
+        function setupCanvasInteractions() {
+            const canvas = document.getElementById('grid-canvas');
+
+            canvas.onmousedown = (e) => {
+                if (e.button === 0) { // Left click
+                    const idx = getPixelIndexFromEvent(e);
+                    if (idx === -1) return;
+
+                    if (currentMode === 'paint') {
+                        isDrawing = true; paint(idx);
+                    } else {
+                        handleRentClick(idx);
+                    }
+                    // Don't prevent default if we want focus, but usually we do to prevent dragging
+                    // e.preventDefault(); 
+                }
+            };
+
+            // Global mouse up handles isDrawing = false
+
+            canvas.onmousemove = (e) => {
+                const idx = getPixelIndexFromEvent(e);
+                if (idx !== -1) {
+                    if (isDrawing && currentMode === 'paint') paint(idx);
+                    updateHoverInfo(idx);
+                }
+            };
+        }
+
+        function redrawGrid() {
+            if (!ctx) return;
+            const imageData = ctx.createImageData(196, 196);
+            const data = imageData.data;
+
+            // Fill imageData from currentPixels
+            for (let i = 0; i < 196 * 196; i++) {
+                const colorIdx = currentPixels[i];
+                const hex = COLORS[colorIdx] || '#FFFFFF';
+                // Convert hex to rgb
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+
+                const pos = i * 4;
+                data[pos] = r;
+                data[pos + 1] = g;
+                data[pos + 2] = b;
+                data[pos + 3] = 255; // Alpha
+            }
+            ctx.putImageData(imageData, 0, 0);
+
+            // Re-apply overlays (rent highlights etc)
+            // Ideally these are on a separate canvas layer or div overlays
+            // Currently overlays are separate divs in #quadrant-overlay which sits ON TOP.
+            // So we don't need to draw grid lines or rent markers on the pixel canvas!
+            // BUT 'is-filled' class on pixels was used for styling.
+            // And 'rent-selected' class was used for styling.
+            // We need to replicate visual cues for rent selection canvas-side OR use a simplified overlay system.
+
+            // For now: Selection is easier with an SVG or Canvas overlay. 
+            // Let's assume selection highlights are handled by 'drawSelectionOverlay' which we might need to add,
+            // or simply tint the pixels in the main canvas.
+            // Actually, `highlightQuadrant` adds classes to divs. We don't have divs anymore.
+            // We need to implement `drawHighlights()`
+            drawHighlights();
+        }
+
+        function drawHighlights() {
+            // Rent selections
+            // Iterate all plots, check queued rents
+            // Draw transparent rects
+
+            // We can draw directly on top of the pixels in the same context?
+            // Or better: use the existing #quadrant-overlay for this?
+            // The existing overlay has grid lines. We can add selection boxes there.
+            // Simpler: Just darken pixels in the pixel canvas? No, that modifies pixel data.
+            // Let's use a secondary canvas for UI highlights or append divs to the overlay layer.
+
+            // Let's stick to appending divs to #quadrant-overlay for selections as it's cleaner than modifying currentPixels buffer
+            updateSelectionOverlay();
+        }
+
+        function updateSelectionOverlay() {
+            // Clear previous selections from overlay (except grid lines)
+            const overlay = document.getElementById('quadrant-overlay');
+            // Remove old selection/rented rects
+            overlay.querySelectorAll('.selection-rect, .rented-rect').forEach(e => e.remove());
+
+            plots.forEach(plot => {
+                // Draw Active Rents (From Contract)
+                if (plot.activeRents) {
+                    plot.activeRents.forEach(rent => {
+                        const r = getQuadrantRect(plot, rent.qIdx);
+                        const div = document.createElement('div');
+                        div.className = 'rented-rect';
+                        div.style.left = r.x + 'px';
+                        div.style.top = r.y + 'px';
+                        div.style.width = r.w + 'px';
+                        div.style.height = r.h + 'px';
+                        // Keep the checkmark visual
+                        div.innerHTML = `<span style="position:absolute;bottom:0;right:0;color:lime;font-size:10px;">✓</span>`;
+                        overlay.appendChild(div);
+                    });
+                }
+
+                // Draw Queued Rents (User Selection)
+                plot.queuedRents.forEach(qIdx => {
+                    const r = getQuadrantRect(plot, qIdx);
+                    // Don't draw selection over active rent (optional)
+                    const div = document.createElement('div');
+                    div.className = 'selection-rect';
+                    div.style.left = r.x + 'px';
+                    div.style.top = r.y + 'px';
+                    div.style.width = r.w + 'px';
+                    div.style.height = r.h + 'px';
+                    overlay.appendChild(div);
+                });
+            });
+        }
+
+        function getQuadrantRect(plot, qIdx) {
+            const gridIdx = plots.indexOf(plot);
+            const plotRow = Math.floor(gridIdx / 7);
+            const plotCol = gridIdx % 7;
+            const qRow = Math.floor(qIdx / 2);
+            const qCol = qIdx % 2;
+
+            // Pixel scale is 5
+            const x = (plotCol * 28 + qCol * 14) * 5;
+            const y = (plotRow * 28 + qRow * 14) * 5;
+            return { x, y, w: 14 * 5, h: 14 * 5 };
+        }
+
+        // --- Updated Paint ---
+        function paint(globalIdx) {
+            if (currentPixels[globalIdx] === selectedColor) return;
+            currentPixels[globalIdx] = selectedColor;
+
+            // Update Canvas directly for speed
+            if (ctx) {
+                const hex = COLORS[selectedColor];
+                ctx.fillStyle = hex;
+                // x, y index
+                const y = Math.floor(globalIdx / 196);
+                const x = globalIdx % 196;
+                ctx.fillRect(x, y, 1, 1);
+            }
+
+            // Logic
+            const y = Math.floor(globalIdx / 196);
+            const x = globalIdx % 196;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 7 + plotCol;
+            const plot = plots[plotIdx];
+
+            const localY = y % 28;
+            const localX = x % 28;
+            const localIdx = localY * 28 + localX;
+
+            if (!plot.modifiedIndices.has(localIdx)) {
+                plot.modifiedIndices.add(localIdx);
+            }
+            updateQueueUI();
+        }
+
+        // --- Updated Decode ---
+        function decodePlotState(plot, resetEdits = true) {
+            const rawHex = plot.instance.pixels.startsWith('0x') ? plot.instance.pixels.slice(2) : plot.instance.pixels;
+            let n = 0n;
+            // Parse big int... (same as before)
+            for (let i = 0; i < rawHex.length; i += 2) {
+                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                n |= (byte << (BigInt(i / 2) * 8n));
+            }
+
+            for (let i = 0; i < 784; i++) {
+                const color = Number((n >> (BigInt(i) * 5n)) & 31n);
+                plot.originalPixels[i] = color;
+
+                const globalIdx = getGlobalIdxFromLocal(plot, i);
+                if (resetEdits || !plot.modifiedIndices.has(i)) {
+                    currentPixels[globalIdx] = color;
+                }
+            }
+            if (resetEdits) {
+                plot.modifiedIndices.clear();
+            }
+            // Trigger redraw
+            requestAnimationFrame(redrawGrid);
+            updateQueueUI();
+        }
+
+        function updateHoverInfo(globalIdx) {
+            const y = Math.floor(globalIdx / 196);
+            const x = globalIdx % 196;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 7 + plotCol;
+
+            const localY = y % 28;
+            const localX = x % 28;
+            const qX = Math.floor(localX / 14);
+            const qY = Math.floor(localY / 14);
+            const qIdx = qY * 2 + qX;
+
+            document.getElementById('plot-info-card').innerHTML = `
+                <div style="color:var(--accent); font-weight:600">PLOT ${plotIdx}</div>
+                <div>X: ${x}, Y: ${y}</div>
+                <div>Quadrant: Q${qIdx}</div>
+            `;
+        }
+
+        function initPanZoom() {
+            const container = document.getElementById('grid-container');
+            const viewport = document.querySelector('.viewport');
+
+            viewport.onwheel = (e) => {
+                e.preventDefault();
+                const zoomSpeed = 0.001;
+                const delta = -e.deltaY * zoomSpeed;
+                const oldScale = scale;
+                scale = Math.min(Math.max(0.1, scale + scale * delta), 15);
+
+                const vRect = viewport.getBoundingClientRect();
+                // Mouse position relative to viewport
+                const mouseX = e.clientX - vRect.left;
+                const mouseY = e.clientY - vRect.top;
+
+                // To keep the point under the mouse stationary:
+                // (mouseX - panX) / oldScale = (mouseX - newPanX) / scale
+                const scaleRatio = scale / oldScale;
+                panX = mouseX - (mouseX - panX) * scaleRatio;
+                panY = mouseY - (mouseY - panY) * scaleRatio;
+
+                updateTransform();
+            };
+
+            viewport.onmousedown = (e) => {
+                if (e.button === 2 || e.button === 1) { // Right or Middle click
+                    isPanning = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    container.style.cursor = 'grabbing';
+                    e.preventDefault();
+                }
+            };
+
+            window.onmousemove = (e) => {
+                if (isPanning) {
+                    const dx = e.clientX - lastMouseX;
+                    const dy = e.clientY - lastMouseY;
+                    panX += dx;
+                    panY += dy;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    updateTransform();
+                }
+            };
+
+            window.onmouseup = () => {
+                isPanning = false;
+                container.style.cursor = 'grab';
+            };
+
+            viewport.oncontextmenu = (e) => e.preventDefault();
+        }
+
+        function updateTransform() {
+            const container = document.getElementById('grid-container');
+            // Using requestAnimationFrame for silky smooth performance
+            requestAnimationFrame(() => {
+                container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+            });
+        }
+
+        // --- UI ACTIONS ---
+        function setMode(mode) {
+            // Stop history playback if leaving history mode
+            if (currentMode === 'history' && mode !== 'history') {
+                historyStop();
+                restoreFromHistory();
+            }
+
+            currentMode = mode;
+            document.getElementById('paint-mode-btn').classList.toggle('active', mode === 'paint');
+            document.getElementById('rent-mode-btn').classList.toggle('active', mode === 'rent');
+            document.getElementById('history-mode-btn').classList.toggle('active', mode === 'history');
+            document.getElementById('rent-options').style.display = mode === 'rent' ? 'block' : 'none';
+            document.getElementById('history-options').style.display = mode === 'history' ? 'block' : 'none';
+            document.body.classList.toggle('rent-mode', mode === 'rent');
+            document.body.classList.toggle('history-mode', mode === 'history');
+
+            // Clear rent selections when switching to paint
+            if (mode === 'paint') {
+                clearRentSelections();
+                clearRentedDisplay();
+            }
+
+            // Show rented quadrants when entering rent mode
+            if (mode === 'rent') {
+                setTimeout(() => showRentedQuadrants(), 50);
+            }
+
+            // Hide palette card if not in paint mode
+            const paletteCard = document.getElementById('palette-card');
+            if (paletteCard) paletteCard.style.display = mode === 'paint' ? 'block' : 'none';
+
+            updateQueueUI();
+            addLog(`Switched to ${mode.toUpperCase()} mode.`);
+        }
+
+        function setRentPeriod(blocks) {
+            rentPeriod = blocks;
+            document.querySelectorAll('.rent-period-btn').forEach(btn => {
+                const btnBlocks = {
+                    '6 blk': 6,
+                    '36 blk': 36,
+                    '1 day': 144,
+                    '1 week': 1008
+                }[btn.textContent.trim()];
+                btn.classList.toggle('active', btnBlocks === blocks);
+            });
+            const labels = { 6: '~1hr', 36: '~6hrs', 144: '~1 day', 1008: '~1 week' };
+            addLog(`Rent period: ${blocks} blocks (${labels[blocks] || blocks + ' blocks'})`);
+        }
+
+        function clearRentSelections() {
+            document.querySelectorAll('.pixel.rent-selected').forEach(el => {
+                el.classList.remove('rent-selected');
+            });
+            plots.forEach(plot => plot.queuedRents.clear());
+            hideRentInfo();
+        }
+
+        function zoomToPlot(plotIdx) {
+            const plot = plots[plotIdx];
+            const plotRow = Math.floor(plotIdx / 7);
+            const plotCol = plotIdx % 7;
+
+            const viewport = document.querySelector('.viewport');
+            const vRect = viewport.getBoundingClientRect();
+
+            // Calculate center of plot in grid coordinates
+            const pixelSize = 5; // var(--pixel-size)
+            const plotCenterX = (plotCol * 28 + 14) * pixelSize;
+            const plotCenterY = (plotRow * 28 + 14) * pixelSize;
+
+            // Zoom in and center on plot
+            scale = 4;
+            panX = (vRect.width / 2) - (plotCenterX * scale);
+            panY = (vRect.height / 2) - (plotCenterY * scale);
+
+            updateTransform();
+            addLog(`Zoomed to Plot ${plotIdx}`);
+        }
+
+        function updateFeeLabel(val) {
+            feeRate = parseInt(val);
+            document.getElementById('fee-val').innerText = val;
+            addLog(`Fee rate: ${val} sat/kb (${(val / 1000).toFixed(2)} sat/byte)`);
+        }
+
+        function selectColor(idx) {
+            selectedColor = idx;
+            document.querySelectorAll('.swatch').forEach((s, i) => s.classList.toggle('selected', i === idx));
+            updatePriceLabel();
+        }
+
+        function updatePriceLabel() {
+            let price = (selectedColor <= 1) ? 1 : (selectedColor >= 28 ? 5 : 3);
+            document.getElementById('selected-price').innerText = `${price} SAT / PIXEL`;
+        }
+
+        // --- CANAVAS & INTERACTION UPDATES ---
+
+        function paint(globalIdx) {
+            if (currentPixels[globalIdx] === selectedColor) return;
+            currentPixels[globalIdx] = selectedColor;
+
+            // 1. Update Canvas directly for speed
+            if (ctx) {
+                const hex = COLORS[selectedColor];
+                ctx.fillStyle = hex;
+                const y = Math.floor(globalIdx / 196);
+                const x = globalIdx % 196;
+                ctx.fillRect(x, y, 1, 1);
+            }
+
+            // 2. Logic & State
+            const y = Math.floor(globalIdx / 196);
+            const x = globalIdx % 196;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 7 + plotCol;
+            const plot = plots[plotIdx];
+
+            const localY = y % 28;
+            const localX = x % 28;
+            const localIdx = localY * 28 + localX;
+
+            // Check against original to toggle 'modified' state
+            if (currentPixels[globalIdx] !== plot.originalPixels[localIdx]) {
+                plot.modifiedIndices.add(localIdx);
+            } else {
+                plot.modifiedIndices.delete(localIdx);
+            }
+            updateQueueUI();
+        }
+
+        function handleRentClick(globalIdx) {
+            const y = Math.floor(globalIdx / 196);
+            const x = globalIdx % 196;
+            const plotRow = Math.floor(y / 28);
+            const plotCol = Math.floor(x / 28);
+            const plotIdx = plotRow * 7 + plotCol;
+            const plot = plots[plotIdx];
+
+            const localY = y % 28;
+            const localX = x % 28;
+            const qX = Math.floor(localX / 14);
+            const qY = Math.floor(localY / 14);
+            const qIdx = qY * 2 + qX;
+
+            // Toggle quadrant selection
+            if (plot.queuedRents.has(qIdx)) {
+                plot.queuedRents.delete(qIdx);
+                addLog(`Removed Q${qIdx} from Plot ${plotIdx}`);
+            } else {
+                plot.queuedRents.add(qIdx);
+                addLog(`Added Q${qIdx} to Plot ${plotIdx} (${rentPeriod} blocks)`);
+            }
+
+            // Update visuals
+            updateSelectionOverlay();
+            updateQueueUI();
+
+            // Show rent info popup (Canvas version)
+            showRentInfo(plotIdx, globalIdx);
+        }
+
+        function clearRentSelections() {
+            plots.forEach(plot => plot.queuedRents.clear());
+            updateSelectionOverlay();
+            hideRentInfo();
+        }
+
+        function showRentInfo(plotIdx, nearGlobalIdx) {
+            hideRentInfo();
+            const plot = plots[plotIdx];
+            if (!plot.instance) return;
+
+            const popup = document.createElement('div');
+            popup.className = 'rent-info-popup';
+            popup.id = 'rent-info-popup';
+
+            const rentPrice = plot.instance.rentPricePerBlock || 100n;
+            const totalCost = BigInt(rentPeriod) * rentPrice * BigInt(Math.max(1, plot.queuedRents.size));
+
+            popup.innerHTML = `
+                <h4>Plot ${plotIdx} Rent Info</h4>
+                <div class="info-row"><span>Price/block:</span> <span class="val">${rentPrice} sat</span></div>
+                <div class="info-row"><span>Period:</span> <span class="val">${rentPeriod} blocks</span></div>
+                <div class="info-row"><span>Selected:</span> <span class="val">${plot.queuedRents.size} quadrant(s)</span></div>
+                <div class="info-row"><span>Total cost:</span> <span class="val">${totalCost} sat</span></div>
+            `;
+
+            const canvas = document.getElementById('grid-canvas');
+            if (canvas) {
+                const cRect = canvas.getBoundingClientRect();
+                const y = Math.floor(nearGlobalIdx / 196);
+                const x = nearGlobalIdx % 196;
+                const pixelW = cRect.width / 196;
+                const pixelH = cRect.height / 196;
+                const screenX = cRect.left + x * pixelW;
+                const screenY = cRect.top + y * pixelH;
+
+                popup.style.left = Math.min(screenX + 20, window.innerWidth - 200) + 'px';
+                popup.style.top = Math.max(screenY - 50, 10) + 'px';
+                document.body.appendChild(popup);
+                rentInfoPopup = popup;
+            }
+
+            setTimeout(() => {
+                if (rentInfoPopup === popup) hideRentInfo();
+            }, 3000);
+        }
+
+        function hideRentInfo() {
+            if (rentInfoPopup) {
+                rentInfoPopup.remove();
+                rentInfoPopup = null;
+            }
+        }
+
+        function showRentedQuadrants() {
+            plots.forEach(plot => {
+                plot.activeRents = [];
+                if (!plot.instance || !plot.instance.rentEnds) return;
+                for (let q = 0; q < 4; q++) {
+                    const exp = Number(plot.instance.rentEnds[q]);
+                    if (exp > currentBlockHeight) {
+                        plot.activeRents.push({
+                            qIdx: q,
+                            blocksLeft: exp - currentBlockHeight
+                        });
+                    }
+                }
+            });
+            updateSelectionOverlay();
+        }
+
+        function clearRentedDisplay() {
+            plots.forEach(p => p.activeRents = []);
+            updateSelectionOverlay();
+        }
+
+        // --- HISTORY MODE ---
+        async function loadHistory(limit = 50, startBlock = null, endBlock = null) {
+            addLog(`Loading history (${limit} txs, blocks: ${startBlock || 'any'}-${endBlock || 'any'})...`);
+            historyEvents = [];
+
+            // Try to load from cache first
+            const cacheKey = `pixel_history_${plots[0].genesisId}`;
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                try {
+                    const cachedEvents = JSON.parse(cached);
+                    historyEvents = cachedEvents.map(ev => ({
+                        ...ev,
+                        time: new Date(ev.time),
+                        pixels: new Uint8Array(Object.values(ev.pixels))
+                    }));
+                    addLog(`Loaded ${historyEvents.length} events from cache.`);
+                } catch (e) { console.error("Cache load failed:", e); }
+            }
+
+            try {
+                const owners = [...new Set(plots.map(p => p.owner))];
+                let newFound = 0;
+
+                for (const owner of owners) {
+                    const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${owner}/history`);
+                    if (!resp.ok) continue;
+
+                    const txs = await resp.json();
+                    const filteredTxs = txs.filter(tx => {
+                        const height = tx.height || tx.block_height || 0;
+                        if (startBlock && height < parseInt(startBlock)) return false;
+                        if (endBlock && height > parseInt(endBlock)) return false;
+                        return true;
+                    });
+
+                    const relevantTxs = filteredTxs.slice(0, Math.min(limit, filteredTxs.length));
+
+                    for (const txInfo of relevantTxs) {
+                        const txid = txInfo.tx_hash || txInfo.txid;
+                        if (historyEvents.some(ev => ev.txid === txid)) continue;
+
+                        const event = await parseHistoryTx(txid, owner);
+                        if (event) {
+                            historyEvents.push(event);
+                            newFound++;
+                        }
+                    }
+                }
+
+                historyEvents.sort((a, b) => (a.height || 0) - (b.height || 0));
+
+                if (newFound > 0) {
+                    const toCache = historyEvents.map(ev => ({
+                        ...ev,
+                        pixels: Array.from(ev.pixels)
+                    }));
+                    localStorage.setItem(cacheKey, JSON.stringify(toCache));
+                    addLog(`Found ${newFound} new events. Total: ${historyEvents.length}`, "success");
+                }
+
+                if (historyEvents.length > 0) {
+                    document.getElementById('history-controls').style.display = 'block';
+                    document.getElementById('history-slider').max = historyEvents.length - 1;
+                    document.getElementById('history-slider').value = 0;
+                    historyIndex = 0;
+                    historyBasePixels = new Uint8Array(currentPixels);
+                    updateHistoryInfo();
+                    updateQueueUI();
+                } else {
+                    addLog("No history events found", "error");
+                }
+            } catch (e) {
+                addLog(`History load error: ${e.message}`, "error");
+            }
+        }
+
+        async function parseHistoryTx(txid, owner) {
+            try {
+                const resp = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}`);
+                if (!resp.ok) return null;
+
+                const tx = await resp.json();
+
+                for (const out of tx.vout) {
+                    const asm = out.scriptPubKey?.asm || '';
+                    if (asm.includes('OP_RETURN')) {
+                        const parts = asm.split(' ');
+                        const dataHex = parts.find(p => p.length > 10 && /^[0-9a-f]+$/i.test(p));
+
+                        if (dataHex) {
+                            const dataStr = hexToString(dataHex);
+
+                            if (dataStr.includes('UPDATE_') || dataStr.includes('RENT_')) {
+                                const plotMatch = dataStr.match(/PLOT(\d+)|P(\d+)/i);
+                                const plotIdx = plotMatch ? parseInt(plotMatch[1] || plotMatch[2]) : -1;
+
+                                const commentParts = dataStr.split('|');
+                                const comment = commentParts[1] ? commentParts[1].trim() : '';
+
+                                try {
+                                    const { PixelPlot28, bsv } = ScryptBundle;
+                                    const instance = PixelPlot28.fromTx(new bsv.Transaction(tx.hex), 0);
+                                    const plotPixels = decodePixelsFromHex(instance.pixels);
+
+                                    return {
+                                        txid: txid,
+                                        height: tx.blockheight || 0,
+                                        time: tx.blocktime ? new Date(tx.blocktime * 1000) : new Date(),
+                                        plotIndex: plotIdx,
+                                        type: dataStr.includes('RENT_') ? 'RENT' : 'UPDATE',
+                                        data: dataStr,
+                                        comment: comment,
+                                        pixels: plotPixels,
+                                        owner: owner
+                                    };
+                                } catch (e) { console.error("Failed to decode history instance:", e); }
+                            }
+                        }
+                    }
+                }
+            } catch (e) { console.error("Parse failed:", e); }
+            return null;
+        }
+
+        function clearHistoryCache() {
+            const cacheKey = `pixel_history_${plots[0].genesisId}`;
+            localStorage.removeItem(cacheKey);
+            historyEvents = [];
+            document.getElementById('history-controls').style.display = 'none';
+            addLog("History cache cleared.");
+            updateQueueUI();
+        }
+
+        function hexToString(hex) {
+            let str = '';
+            for (let i = 0; i < hex.length; i += 2) {
+                const code = parseInt(hex.substr(i, 2), 16);
+                if (code >= 32 && code < 127) str += String.fromCharCode(code);
+            }
+            return str;
+        }
+
+        function decodePixelsFromHex(pixelsHex) {
+            const rawHex = pixelsHex.startsWith('0x') ? pixelsHex.slice(2) : pixelsHex;
+            let n = 0n;
+            for (let i = 0; i < rawHex.length; i += 2) {
+                const byte = BigInt(parseInt(rawHex.substr(i, 2), 16));
+                n |= (byte << (BigInt(i / 2) * 8n));
+            }
+            const pixels = new Uint8Array(28 * 28);
+            for (let i = 0; i < 784; i++) {
+                pixels[i] = Number((n >> (BigInt(i) * 5n)) & 31n);
+            }
+            return pixels;
+        }
+
+        function historyStep(dir) {
+            historyIndex = Math.max(0, Math.min(historyEvents.length - 1, historyIndex + dir));
+            document.getElementById('history-slider').value = historyIndex;
+            applyHistoryEvent(historyIndex);
+            updateHistoryInfo();
+        }
+
+        function historySeek(value) {
+            historyIndex = parseInt(value);
+            applyHistoryEvent(historyIndex);
+            updateHistoryInfo();
+        }
+
+        function historyTogglePlay() {
+            if (historyPlaying) {
+                historyStop();
+            } else {
+                historyPlay();
+            }
+        }
+
+        function historyPlay() {
+            historyPlaying = true;
+            document.getElementById('history-play-btn').classList.add('playing');
+            document.getElementById('history-play-btn').textContent = '⏸';
+
+            historyPlayInterval = setInterval(() => {
+                if (historyIndex >= historyEvents.length - 1) {
+                    historyStop();
+                    return;
+                }
+                historyStep(1);
+            }, 500); // 500ms per event
+        }
+
+        function historyStop() {
+            historyPlaying = false;
+            document.getElementById('history-play-btn').classList.remove('playing');
+            document.getElementById('history-play-btn').textContent = '▶▶';
+            if (historyPlayInterval) {
+                clearInterval(historyPlayInterval);
+                historyPlayInterval = null;
+            }
+        }
+
+        function applyHistoryEvent(idx) {
+            if (idx < 0 || idx >= historyEvents.length) return;
+
+            const event = historyEvents[idx];
+
+            // Clear previous highlights
+            document.querySelectorAll('.pixel.history-updated').forEach(el => {
+                el.classList.remove('history-updated');
+            });
+
+            // Find correct plot object (lookup by index property, NOT array index)
+            const plot = plots.find(p => p.index === event.plotIndex);
+            if (!plot) {
+                console.warn(`History event for unknown plot index: ${event.plotIndex}`);
                 return;
             }
 
-            log("Syncing heads before update...");
-            try {
-                const latestTxids = await fetchLatestTxidsBulk(GRID_CONTRACTS);
-                for (let i = 0; i < 4; i++) {
-                    if (contractInstances[i] && contractInstances[i].utxo.txId !== latestTxids[i]) {
-                        log(`Plot ${i} has moved. Reloading latest state...`);
-                        await loadPlot(i, latestTxids[i]);
-                    }
-                }
-            } catch (e) { log("Sync failed, proceeding with current state..."); }
-
-            // Get height once
-            let currentHeight = 0;
-            try {
-                const res = await fetch('https://api.whatsonchain.com/v1/bsv/main/chain/info');
-                const json = await res.json();
-                currentHeight = json.blocks || 881000;
-            } catch (e) { currentHeight = 881000; }
-
-            const lockTime = currentHeight;
-            const newLockedUntil = BigInt(lockTime + 20);
-
-            for (const q of dirtyIndices) {
-                const queueItem = document.getElementById(`queue-item-${q}`);
-                const statusEl = queueItem.querySelector('.status');
-                statusEl.innerText = "Processing...";
-                statusEl.style.color = "#3b82f6";
-
-                let instance = contractInstances[q];
-                if (!instance || !instance.utxo) {
-                    statusEl.innerText = "Failed (Invalid Instance)";
-                    statusEl.style.color = "#ef4444";
-                    continue;
-                }
-
-                log(`Updating plot ${q} (TX: ${instance.utxo.txId.substring(0, 8)})...`);
-                try {
-                    await instance.connect(signer);
-
-                    if (!instance.utxo) throw new Error("Instance UTXO missing");
-
-                    const newPixels = toByteString(bytesToHex(quadrantCurrent[q]));
-                    const nextInstance = instance.next();
-                    nextInstance.pixels = newPixels;
-                    nextInstance.lockedUntil = newLockedUntil;
-                    nextInstance.lockedAmount = (instance.lockedAmount > instance.minGreen) ? instance.lockedAmount : (instance.minGreen + 10n);
-
-                    const feeTotal = (newLockedUntil - BigInt(lockTime)) * instance.pricePerBlock;
-                    const totalPay = feeTotal + 1n;
-                    const ownerPkh = instance.owner;
-
-                    instance.bindTxBuilder('updateAll', async (current, options) => {
-                        const tx = new bsv.Transaction();
-                        if (options.lockTime) tx.lockUntilBlockHeight(options.lockTime);
-                        tx['_feePerKb'] = 100;
-
-                        const utxo = options.fromUTXO || current.utxo;
-                        tx.addInput(new bsv.Transaction.Input({
-                            prevTxId: utxo.txId, outputIndex: utxo.outputIndex,
-                            script: bsv.Script.fromHex(utxo.script),
-                            output: new bsv.Transaction.Output({ satoshis: utxo.satoshis, script: bsv.Script.fromHex(utxo.script) })
-                        }));
-
-                        tx.addOutput(new bsv.Transaction.Output({ script: nextInstance.lockingScript, satoshis: current.utxo.satoshis }));
-                        tx.addOutput(new bsv.Transaction.Output({ script: bsv.Script.fromHex(Utils.buildPublicKeyHashScript(ownerPkh)), satoshis: Number(totalPay) }));
-                        if (options.changeAddress) tx.change(options.changeAddress);
-
-                        const ctx = tx;
-                        ctx.atInputIndex = 0;
-                        return { tx: ctx, atInputIndex: 0, nexts: [] };
-                    });
-
-                    const txResult = await instance.methods.updateAll(
-                        newPixels, newLockedUntil, nextInstance.lockedAmount,
-                        {
-                            lockTime: lockTime,
-                            changeAddress: await signer.getDefaultAddress(),
-                            next: { instance: nextInstance, balance: instance.utxo.satoshis, atOutputIndex: 0 }
-                        }
-                    );
-
-                    log(`Plot ${q} updated! TXID: ${txResult.tx.id}`);
-
-                    // Calculate network fee: Total Inputs - Total Outputs
-                    const totalInputSat = txResult.tx.inputs.reduce((sum, input) => sum + (input.output ? input.output.satoshis : 0), 0);
-                    const totalOutputSat = txResult.tx.outputs.reduce((sum, output) => sum + output.satoshis, 0);
-                    const networkFee = totalInputSat - totalOutputSat;
-                    totalFeesSpent += networkFee;
-
-                    log(`Plot ${q} fee: ${networkFee} sats.`);
-                    statusEl.innerHTML = `Success! Fee: ${networkFee} <a href="https://whatsonchain.com/tx/${txResult.tx.id}" target="_blank" style="color:#10b981; font-family:monospace; text-decoration:none">${txResult.tx.id.substring(0, 8)}...</a>`;
-                    statusEl.style.color = "#10b981";
-                    queueItem.style.color = "#fff";
-
-                    if (txResult.next) {
-                        contractInstances[q] = txResult.next.instance;
-                    } else if (txResult.nexts && txResult.nexts[0]) {
-                        contractInstances[q] = txResult.nexts[0].instance;
-                    } else {
-                        // Fallback: manually update UTXO for next round
-                        nextInstance.utxo = {
-                            txId: txResult.tx.id,
-                            outputIndex: 0,
-                            satoshis: instance.utxo.satoshis,
-                            script: nextInstance.lockingScript.toHex()
-                        };
-                        contractInstances[q] = nextInstance;
-                    }
-
-                    // Update our reference so we follow the new head next time from this session
-                    // Note: This only helps if we don't reload. 
-                    // To follow across reloads, we need the fetchLatestTxid logic.
-
-                    quadrantOriginal[q] = new Uint8Array(quadrantCurrent[q]);
-                    quadrantDirty[q] = false;
-
-                    log(`Waiting 5s for mempool/indexer sync...`);
-                    await new Promise(r => setTimeout(r, 5000));
-
-                } catch (e) {
-                    log(`Error updating plot ${q}: ${e.message}`, "error");
-                    statusEl.innerText = `Error: ${e.message.substring(0, 20)}...`;
-                    statusEl.style.color = "#ef4444";
-                    console.error(e);
+            // Find previous state for this plot in history to show "points update"
+            let prevPixels = null;
+            for (let i = idx - 1; i >= 0; i--) {
+                if (historyEvents[i].plotIndex === event.plotIndex) {
+                    prevPixels = historyEvents[i].pixels;
+                    break;
                 }
             }
-            log(`Queue processed. Total fees spent: ${totalFeesSpent} sats.`);
-            setTimeout(() => {
-                queueContainer.style.opacity = '0.5';
-            }, 1000);
+            // If no previous history found, use current original pixels as base
+            if (!prevPixels) {
+                prevPixels = plot.originalPixels;
+            }
 
-            checkDirty();
-            if (btn) btn.disabled = false;
-            setTimeout(refreshWalletDisplay, 2000);
+            // Update the grid pixels for this plot
+            if (event.pixels) {
+                const changedIndices = [];
+                for (let i = 0; i < 784; i++) {
+                    const color = event.pixels[i];
+                    // Pass the real plot object so getGlobalIdxFromLocal works correctly
+                    const globalIdx = getGlobalIdxFromLocal(plot, i);
+
+                    // Update current pixels and background
+                    currentPixels[globalIdx] = color;
+                    const el = document.getElementById(`p${globalIdx}`);
+                    if (el) {
+                        el.style.backgroundColor = COLORS[color];
+                        el.classList.add('is-filled');
+                        // If it changed compared to previous state, highlight it
+                        if (!prevPixels || prevPixels[i] !== color) {
+                            el.classList.add('history-updated');
+                            changedIndices.push(i);
+                        }
+                    }
+                }
+
+                addLog(`History Step ${idx + 1}: Plot ${event.plotIndex} - ${changedIndices.length} pixels updated.`);
+
+                // Zoom to the plot if it's not a rent event (rent events are larger scale)
+                if (event.type === 'UPDATE' && changedIndices.length > 0) {
+                    const gridIdx = plots.indexOf(plot);
+                    if (gridIdx !== -1) zoomToPlot(gridIdx);
+                }
+            }
+        }
+
+        function updateHistoryInfo() {
+            const info = document.getElementById('history-info');
+            if (historyEvents.length === 0) {
+                info.textContent = 'No events';
+                return;
+            }
+
+            const event = historyEvents[historyIndex];
+            const timeStr = event.time ? event.time.toLocaleString() : 'Unknown';
+            info.innerHTML = `
+                <div style="font-weight:bold; margin-bottom:5px;">${historyIndex + 1} / ${historyEvents.length}</div>
+                <div style="color:var(--accent); font-size:12px; font-weight:600;">${event.type} Plot ${event.plotIndex}</div>
+                ${event.comment ? `<div style="color:var(--success); font-style:italic; margin:4px 0;">"${event.comment}"</div>` : ''}
+                <div style="font-size:9px; color:var(--text-dim); margin-bottom:4px;">${timeStr}</div>
+                <div><a href="https://whatsonchain.com/tx/${event.txid}" target="_blank" style="color:var(--accent); text-decoration:none; font-size:10px; border-bottom:1px solid currentColor;">${event.txid.substring(0, 16)}...</a></div>
+            `;
+        }
+
+        function restoreFromHistory() {
+            if (historyBasePixels) {
+                // Restore original pixels
+                for (let i = 0; i < currentPixels.length; i++) {
+                    currentPixels[i] = historyBasePixels[i];
+                    const el = document.getElementById(`p${i}`);
+                    if (el) {
+                        el.style.backgroundColor = COLORS[currentPixels[i]];
+                        el.classList.add('is-filled');
+                    }
+                }
+                historyBasePixels = null;
+            }
+            document.querySelectorAll('.pixel.history-updated').forEach(el => {
+                el.classList.remove('history-updated');
+            });
+            document.getElementById('history-controls').style.display = 'none';
+        }
+
+        function updateQueueUI() {
+            const queueCubes = document.getElementById('queue-cubes');
+            const errorCubesEl = document.getElementById('error-cubes');
+            const errorSection = document.getElementById('queue-errors');
+            const queueTitle = document.getElementById('queue-title');
+
+            queueCubes.innerHTML = '';
+
+            if (currentMode === 'history') {
+                queueTitle.innerText = "HISTORY EVENTS";
+                if (historyEvents.length === 0) {
+                    queueCubes.innerHTML = '<div style="color:rgba(255,255,255,0.2); text-align:center; padding:20px; width:100%;">No history loaded</div>';
+                } else {
+                    // Add "Clear History" cube/action
+                    const clearBtn = document.createElement('div');
+                    clearBtn.className = 'queue-cube error';
+                    clearBtn.innerHTML = '<span class="plot-num">✕</span><span class="count">CLEAR</span>';
+                    clearBtn.onclick = clearHistoryCache;
+                    clearBtn.title = "Clear all cached history";
+                    queueCubes.appendChild(clearBtn);
+
+                    historyEvents.slice().reverse().forEach((ev, idx) => {
+                        const actualIdx = historyEvents.length - 1 - idx;
+                        const cube = document.createElement('div');
+                        cube.className = 'queue-cube';
+                        if (actualIdx === historyIndex) cube.style.borderColor = 'var(--success)';
+                        cube.innerHTML = `
+                            <span class="plot-num">${ev.plotIndex}</span>
+                            <span class="count">${ev.type === 'RENT' ? 'RENT' : 'UPD'}</span>
+                        `;
+                        cube.onclick = () => {
+                            historyIndex = actualIdx;
+                            document.getElementById('history-slider').value = historyIndex;
+                            applyHistoryEvent(historyIndex);
+                            updateHistoryInfo();
+                            updateQueueUI();
+                        };
+                        cube.title = `${ev.type} Plot ${ev.plotIndex} at block ${ev.height}\n${ev.comment || 'No comment'}`;
+                        queueCubes.appendChild(cube);
+                    });
+                }
+                errorSection.style.display = 'none';
+                return;
+            }
+
+            queueTitle.innerText = "TRANSACTION QUEUE";
+            let totalActions = 0;
+
+            // Pixel update cubes
+            plots.forEach(plot => {
+                if (plot.modifiedIndices.size > 0) {
+                    totalActions++;
+                    const cube = document.createElement('div');
+                    cube.className = 'queue-cube';
+                    cube.dataset.plotIndex = plot.index;
+                    cube.innerHTML = `
+                        <span class="plot-num">${plot.index}</span>
+                        <span class="count">${plot.modifiedIndices.size}px</span>
+                    `;
+                    cube.onclick = () => zoomToPlot(plot.index);
+                    cube.title = `Plot ${plot.index}: ${plot.modifiedIndices.size} pixels - Click to zoom`;
+                    queueCubes.appendChild(cube);
+                }
+            });
+
+            // Rent cubes with quadrant grid visualization
+            plots.forEach(plot => {
+                if (plot.queuedRents.size > 0) {
+                    totalActions++;
+                    const cube = document.createElement('div');
+                    cube.className = 'queue-cube rent-cube';
+                    cube.dataset.plotIndex = plot.index;
+
+                    // Build quadrant grid visualization
+                    const quadGrid = `
+                        <div class="rent-quad-grid">
+                            <div class="rent-quad-cell ${plot.queuedRents.has(0) ? 'filled' : ''}"></div>
+                            <div class="rent-quad-cell ${plot.queuedRents.has(1) ? 'filled' : ''}"></div>
+                            <div class="rent-quad-cell ${plot.queuedRents.has(2) ? 'filled' : ''}"></div>
+                            <div class="rent-quad-cell ${plot.queuedRents.has(3) ? 'filled' : ''}"></div>
+                        </div>
+                    `;
+
+                    cube.innerHTML = `
+                        ${quadGrid}
+                        <span class="count">P${plot.index}</span>
+                    `;
+                    cube.onclick = () => zoomToPlot(plot.index);
+                    const qList = Array.from(plot.queuedRents).join(',');
+                    cube.title = `Plot ${plot.index}: Rent Q[${qList}] for ${rentPeriod} blocks (${plot.queuedRents.size} tx) - Click to zoom`;
+                    queueCubes.appendChild(cube);
+                }
+            });
+
+            if (totalActions === 0) {
+                queueCubes.innerHTML = '<div style="color:rgba(255,255,255,0.2); text-align:center; padding:20px; width:100%;">No pending actions</div>';
+            }
+
+            // Error cubes
+            if (errorQueue.length > 0) {
+                errorSection.style.display = 'block';
+                errorCubesEl.innerHTML = '';
+                errorQueue.forEach(err => {
+                    const cube = document.createElement('div');
+                    cube.className = 'queue-cube error';
+                    cube.innerHTML = `
+                        <span class="plot-num">${err.plotIndex}</span>
+                        <span class="count">${err.type}</span>
+                    `;
+                    cube.onclick = () => zoomToPlot(err.plotIndex);
+                    cube.title = `Error: ${err.message} - Click to zoom`;
+                    errorCubesEl.appendChild(cube);
+                });
+            } else {
+                errorSection.style.display = 'none';
+            }
+        }
+
+        function addLog(msg, type = '', txid = null) {
+            const stream = document.getElementById('log-stream');
+            const div = document.createElement('div');
+            div.className = 'log-msg' + (type ? ' ' + type : '');
+
+            const time = new Date().toLocaleTimeString();
+
+            if (txid) {
+                // Create clickable TX link
+                const shortTx = txid.substring(0, 8) + '...';
+                div.innerHTML = `[${time}] ${msg} <a href="https://whatsonchain.com/tx/${txid}" target="_blank" style="color: var(--accent); text-decoration: underline;">${shortTx}</a>`;
+            } else {
+                div.innerText = `[${time}] ${msg}`;
+            }
+
+            stream.prepend(div);
+            console.log(msg, txid || '');
+        }
+
+        function addTxLog(action, plotIdx, txid) {
+            addLog(`${action} Plot ${plotIdx}:`, 'success', txid);
+        }
+
+        async function findHead(txid, outIdx = 0, userAddress = null) {
+            try {
+                const resp = await fetch('https://api.whatsonchain.com/v1/bsv/main/utxos/spent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ utxos: [{ txid, vout: outIdx }] })
+                });
+                const data = await resp.json();
+                const info = data[0];
+                if (info && info.spentIn) {
+                    return findHead(info.spentIn.txid || info.spentIn.tx_hash, 0, userAddress);
+                }
+                return txid;
+            } catch (e) { return txid; }
+        }
+
+        async function getProvider() {
+            const { WhatsonchainProvider, bsv } = ScryptBundle;
+            const p = new WhatsonchainProvider(bsv.Networks.mainnet);
+
+            // Use dynamic fee rate from slider
+            const rate = feeRate;
+            p._feePerKb = rate;
+            p.getFeePerKb = async () => rate;
+            p.getFeeRate = async () => ({ mine: rate, relay: rate });
+
+            // Override sendRawTransaction for WhatsOnChain (shows unconfirmed txs)
+            p.sendRawTransaction = async function (txHex) {
+                const txBytes = txHex.length / 2;
+                const estimatedFee = Math.ceil(txBytes * rate / 1000);
+                addLog(`Broadcasting ${txBytes} bytes, ~${estimatedFee} sat fee`);
+                const response = await fetch('https://api.whatsonchain.com/v1/bsv/main/tx/raw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ txhex: txHex })
+                });
+                const result = await response.text();
+                if (!response.ok) {
+                    throw new Error(`WOC Error ${response.status}: ${result}`);
+                }
+                return result.replace(/^"|"$/g, '');
+            };
+
+            return p;
+        }
+
+
+
+        function decodeBase64(encodedData) {
+            try {
+                return atob(encodedData);
+            } catch (e) {
+                return encodedData;
+            }
+        }
+
+        async function refreshWallet() {
+            const wif = document.getElementById('wif-input').value.trim();
+            const balanceEl = document.getElementById('display-wallet-balance');
+            const addrEl = document.getElementById('display-wallet-addr');
+            const labelEl = document.getElementById('display-wallet-label');
+
+            if (!wif) {
+                balanceEl.innerText = "No Wallet";
+                addrEl.innerText = "Enter WIF above";
+                labelEl.style.display = 'none';
+                return;
+            }
+
+            try {
+                const { bsv } = ScryptBundle;
+                const priv = bsv.PrivateKey.fromWIF(wif);
+                const addr = priv.toAddress().toString();
+                addrEl.innerText = addr.substring(0, 6) + '...' + addr.substring(addr.length - 6);
+                addrEl.title = addr;
+                labelEl.style.display = 'none';
+
+                balanceEl.innerText = "Loading...";
+                const res = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${addr}/balance`);
+                const data = await res.json();
+                balanceEl.innerText = ((data.confirmed || 0) + (data.unconfirmed || 0)) + ' SAT';
+            } catch (e) {
+                console.error("Wallet Refresh Error:", e);
+                balanceEl.innerText = "Error";
+                addrEl.innerText = "Invalid WIF";
+            }
+        }
+
+        function getWif() {
+            const val = document.getElementById('wif-input').value.trim();
+            if (!val) {
+                alert("Please enter a WIF key to transact.");
+                throw new Error("No WIF provided");
+            }
+            return val;
+        }
+
+        async function startExecution() {
+            const btn = document.getElementById('process-btn');
+            btn.disabled = true;
+            btn.innerText = "EXECUTING...";
+
+            const { TestWallet, bsv } = ScryptBundle;
+            const wif = getWif();
+            const priv = bsv.PrivateKey.fromWIF(wif);
+            const provider = await getProvider();
+            const signer = new TestWallet(priv, provider);
+
+            errorQueue = []; // Clear previous errors
+
+            try {
+                for (const plot of plots) {
+                    if (plot.modifiedIndices.size === 0 && plot.queuedRents.size === 0) continue;
+
+                    // Mark cube as processing
+                    markCubeProcessing(plot.index, true);
+                    addLog(`Processing Plot ${plot.index}...`);
+
+                    try {
+                        await plot.instance.connect(signer);
+
+                        // 1. Handle Rents - each quadrant is a separate TX
+                        if (plot.queuedRents.size > 0) {
+                            const rentsToProcess = Array.from(plot.queuedRents);
+                            const failedRents = [];
+                            for (const qIdx of rentsToProcess) {
+                                try {
+                                    const txid = await executeRent(plot, qIdx, signer);
+                                    addTxLog(`Rented Q${qIdx}`, plot.index, txid);
+                                    plot.queuedRents.delete(qIdx);
+                                    updateQueueUI();
+                                    await new Promise(r => setTimeout(r, 500));
+                                } catch (rentErr) {
+                                    addLog(`Q${qIdx} failed: ${rentErr.message}`, "error");
+                                    failedRents.push({ qIdx, error: rentErr.message });
+                                }
+                            }
+                            // Only clear visual selection for successful rents
+                            if (plot.queuedRents.size === 0) {
+                                // All handled
+                            }
+                            updateSelectionOverlay();
+                            // Add failed rents to error queue for retry
+                            if (failedRents.length > 0) {
+                                errorQueue.push({
+                                    plotIndex: plot.index,
+                                    type: 'RENT',
+                                    failedQuadrants: failedRents,
+                                    message: `${failedRents.length} quadrant(s) failed`
+                                });
+                            }
+                        }
+
+                        // 2. Handle Pixels
+                        const list = Array.from(plot.modifiedIndices);
+                        const batches = Math.ceil(list.length / 30);
+                        for (let i = 0; i < batches; i++) {
+                            const batch = list.slice(i * 30, (i + 1) * 30);
+                            const txid = await executeBatch(plot, batch, signer);
+                            addTxLog(`Updated ${batch.length}px`, plot.index, txid);
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+
+                        markCubeProcessing(plot.index, false);
+                    } catch (plotError) {
+                        addLog(`Plot ${plot.index} Error: ${plotError.message}`, "error");
+                        // Only add to error queue if there's still work to do
+                        if (plot.queuedRents.size > 0 || plot.modifiedIndices.size > 0) {
+                            errorQueue.push({
+                                plotIndex: plot.index,
+                                type: plot.queuedRents.size > 0 ? 'RENT' : 'PX',
+                                message: plotError.message
+                            });
+                        }
+                        markCubeProcessing(plot.index, false, true);
+                    }
+
+                    markCubeProcessing(plot.index, false);
+                    updateQueueUI();
+                }
+
+                // Retry errors with new head
+                if (errorQueue.length > 0) {
+                    addLog(`Retrying ${errorQueue.length} failed plots with fresh heads...`);
+                    await retryErrorQueue(signer, provider);
+                }
+
+                addLog("Execution complete!", "success");
+                await refreshWallet();
+            } catch (e) {
+                addLog(`Execution Error: ${e.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "EXECUTE";
+                updateQueueUI();
+            }
+        }
+
+        function markCubeProcessing(plotIdx, processing, isError = false) {
+            const cubes = document.querySelectorAll('.queue-cube');
+            cubes.forEach(cube => {
+                if (cube.querySelector('.plot-num')?.textContent === String(plotIdx)) {
+                    cube.classList.toggle('processing', processing);
+                    if (isError) cube.classList.add('error');
+                }
+            });
+        }
+
+        async function retryErrorQueue(signer, provider) {
+            const { PixelPlot28, bsv } = ScryptBundle;
+            const errorsToRetry = [...errorQueue];
+            errorQueue = [];
+
+            for (const err of errorsToRetry) {
+                const plot = plots[err.plotIndex];
+                addLog(`Finding new head for Plot ${err.plotIndex}...`);
+
+                try {
+                    // Find new head
+                    const newHead = await findHead(plot.genesisId, 0);
+                    if (newHead !== plot.headId) {
+                        plot.headId = newHead;
+                        const tx = await provider.getTransaction(newHead);
+                        plot.instance = PixelPlot28.fromTx(tx, 0);
+                        addLog(`Found new head: ${newHead.substring(0, 10)}...`);
+                    }
+
+                    await plot.instance.connect(signer);
+
+                    if (err.type === 'RENT' && plot.queuedRents.size > 0) {
+                        const rentsToProcess = Array.from(plot.queuedRents);
+                        const stillFailed = [];
+                        for (const qIdx of rentsToProcess) {
+                            try {
+                                const txid = await executeRent(plot, qIdx, signer);
+                                addTxLog(`Retry Rented Q${qIdx}`, plot.index, txid);
+                                plot.queuedRents.delete(qIdx);
+                            } catch (rentErr) {
+                                // Check if it's "already rented" - don't retry these
+                                if (rentErr.message.includes('already rented')) {
+                                    addLog(`Q${qIdx} already rented, skipping`, "error");
+                                    plot.queuedRents.delete(qIdx);
+                                } else {
+                                    stillFailed.push(qIdx);
+                                    addLog(`Q${qIdx} retry failed: ${rentErr.message}`, "error");
+                                }
+                            }
+                        }
+                        if (plot.queuedRents.size === 0) {
+                            updateSelectionOverlay();
+                        }
+                        if (stillFailed.length > 0) {
+                            errorQueue.push({
+                                plotIndex: err.plotIndex,
+                                type: 'RENT',
+                                message: `${stillFailed.length} quadrant(s) still failing`
+                            });
+                        }
+                    } else if (plot.modifiedIndices.size > 0) {
+                        const list = Array.from(plot.modifiedIndices);
+                        const batches = Math.ceil(list.length / 30);
+                        for (let i = 0; i < batches; i++) {
+                            const batch = list.slice(i * 30, (i + 1) * 30);
+                            const txid = await executeBatch(plot, batch, signer);
+                            addTxLog(`Retry Updated ${batch.length}px`, plot.index, txid);
+                        }
+                    }
+
+                    if (plot.queuedRents.size === 0 && plot.modifiedIndices.size === 0) {
+                        addLog(`Plot ${err.plotIndex} retry complete`, "success");
+                    }
+                } catch (retryErr) {
+                    addLog(`Plot ${err.plotIndex} retry failed: ${retryErr.message}`, "error");
+                    errorQueue.push(err);
+                }
+            }
+            updateQueueUI();
+        }
+
+        async function executeRent(plot, qIdx, signer) {
+            const { bsv, PubKeyHash, toByteString, PixelPlot28 } = ScryptBundle;
+            const wif = getWif();
+            const priv = bsv.PrivateKey.fromWIF(wif);
+            const pkh = priv.toAddress().hashBuffer.toString('hex');
+
+            const numBlocks = BigInt(rentPeriod);
+            const cost = numBlocks * plot.instance.rentPricePerBlock;
+
+            addLog(`Renting Plot ${plot.index} Q${qIdx} for ${rentPeriod} blocks (${cost} sats)`);
+
+            // Use static builder
+            plot.instance.bindTxBuilder('rent', PixelPlot28.buildTxForRent);
+
+            const comment = document.getElementById('tx-comment').value.trim();
+            const opReturnData = `RENT_Q${qIdx}_P${plot.index}_${rentPeriod}BLK${comment ? ' | ' + comment : ''}`;
+
+            const txResult = await plot.instance.methods.rent(
+                BigInt(qIdx),
+                PubKeyHash(toByteString(pkh)),
+                numBlocks,
+                toByteString(opReturnData, true),
+                {
+                    changeAddress: priv.toAddress(),
+                    lockTime: currentBlockHeight
+                }
+            );
+
+            plot.instance = txResult.next ? txResult.next.instance : plot.instance;
+            plot.headId = txResult.tx.id;
+
+            return txResult.tx.id;
+        }
+
+        async function executeBatch(plot, list, signer) {
+            const { bsv, toByteString, PixelPlot28 } = ScryptBundle;
+            const wif = getWif();
+            const priv = bsv.PrivateKey.fromWIF(wif);
+
+            const updates = list.map(idx => ({
+                index: BigInt(idx),
+                color: BigInt(currentPixels[getGlobalIdxFromLocal(plot, idx)])
+            }));
+            const numUpdates = updates.length;
+            while (updates.length < 30) updates.push({ index: 0n, color: 0n });
+
+            addLog(`Updating ${numUpdates} pixels on Plot ${plot.index}...`);
+
+            // Use static builder
+            plot.instance.bindTxBuilder('updatePixels', PixelPlot28.buildTxForUpdatePixels);
+
+            const comment = document.getElementById('tx-comment').value.trim();
+            const opReturnData = `UPDATE_${numUpdates}PX_PLOT${plot.index}${comment ? ' | ' + comment : ''}`;
+
+            const txResult = await plot.instance.methods.updatePixels(
+                updates,
+                BigInt(numUpdates),
+                toByteString(opReturnData, true),
+                {
+                    changeAddress: priv.toAddress(),
+                    lockTime: currentBlockHeight
+                }
+            );
+
+            plot.instance = txResult.next ? txResult.next.instance : plot.instance;
+            plot.headId = txResult.tx.id;
+
+            list.forEach(idx => {
+                plot.originalPixels[idx] = currentPixels[getGlobalIdxFromLocal(plot, idx)];
+                plot.modifiedIndices.delete(idx);
+            });
+            updateQueueUI();
+
+            return txResult.tx.id;
+        }
+
+        function getGlobalIdxFromLocal(plot, localIdx) {
+            const gridIdx = plots.indexOf(plot);
+            const plotRow = Math.floor(gridIdx / 7);
+            const plotCol = gridIdx % 7;
+
+            const localY = Math.floor(localIdx / 28);
+            const localX = localIdx % 28;
+            const globalY = plotRow * 28 + localY;
+            const globalX = plotCol * 28 + localX;
+            return globalY * 196 + globalX;
+        }
+
+        function bigintToLEHex(n, bytesCount) {
+            // Ensure we handle negative bigints (though they shouldn't be negative in our logic anymore)
+            // but for safety with bit 3919:
+            let hex = n.toString(16).replace('-', '');
+            if (hex.length % 2 !== 0) hex = '0' + hex;
+
+            const parts = [];
+            for (let i = 0; i < hex.length; i += 2) {
+                parts.push(hex.substring(i, i + 2));
+            }
+            parts.reverse();
+            let res = parts.join('');
+            return res.padEnd(bytesCount * 2, '0').slice(0, bytesCount * 2);
         }
 
         function resetAll() {
-            for (let q = 0; q < 4; q++) {
-                quadrantCurrent[q] = new Uint8Array(quadrantOriginal[q]);
-                renderQuadrant(q, quadrantCurrent[q]);
-            }
-            checkDirty();
+            plots.forEach(plot => {
+                plot.modifiedIndices.forEach(localIdx => {
+                    const globalIdx = getGlobalIdxFromLocal(plot, localIdx);
+                    // Reset pixel data
+                    currentPixels[globalIdx] = plot.originalPixels[localIdx];
+                });
+                plot.modifiedIndices.clear();
+                plot.queuedRents.clear();
+            });
+
+            // Redraw everything
+            requestAnimationFrame(redrawGrid);
+            updateSelectionOverlay();
+
+            errorQueue = [];
+            hideRentInfo();
+            updateQueueUI();
+            addLog("All pending changes reset.");
         }
 
-        function hexToBytes(hex) {
-            const bytes = [];
-            for (let c = 0; c < hex.length; c += 2) bytes.push(parseInt(hex.substr(c, 2), 16));
-            return bytes;
-        }
-
-        function bytesToHex(bytes) {
-            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        function applySettings() {
+            refreshWallet();
+            addLog("Wallet settings updated.", "success");
         }
     </script>
 </body>

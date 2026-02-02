@@ -2964,15 +2964,15 @@ ${quadGrid}
             btn.disabled = true;
             btn.innerText = "EXECUTING...";
 
-            const { TestWallet, bsv } = ScryptBundle;
-            const wif = getWif();
-            const priv = bsv.PrivateKey.fromWIF(wif);
-            const provider = await getProvider();
-            const signer = new TestWallet(priv, provider);
-
-            errorQueue = []; // Clear previous errors
-
             try {
+                const { TestWallet, bsv } = ScryptBundle;
+                const wif = getWif();
+                const priv = bsv.PrivateKey.fromWIF(wif);
+                const provider = await getProvider();
+                const signer = new TestWallet(priv, provider);
+
+                errorQueue = []; // Clear previous errors
+
                 for (const plot of plots) {
                     if (plot.modifiedIndices.size === 0 && plot.queuedRents.size === 0) continue;
 

@@ -204,6 +204,21 @@
             pointer-events: none;
         }
 
+        .rented-rect {
+            position: absolute;
+            border: 1px solid rgba(139, 92, 246, 0.6);
+            background: rgba(139, 92, 246, 0.1);
+            pointer-events: none;
+            box-shadow: inset 0 0 8px rgba(139, 92, 246, 0.2);
+            z-index: 25;
+            transition: all 0.2s;
+        }
+
+        .rented-rect:hover {
+            background: rgba(139, 92, 246, 0.25);
+            border-color: rgba(139, 92, 246, 1);
+        }
+
         /* Quadrant Overlays */
         .quadrant-lines {
             position: absolute;
@@ -1452,6 +1467,21 @@
                         const tx = new bsv.Transaction(cleanHex);
                         plot.instance = PixelPlot28.fromTx(tx, 0);
 
+                        // Parse OP_RETURN comment
+                        plot.lastComment = "";
+                        for (const out of tx.outputs) {
+                            if (out.script.isSafeDataOut()) {
+                                const data = out.script.chunks[1].buf?.toString('utf8') || "";
+                                if (data) {
+                                    plot.lastOpReturn = data;
+                                    if (data.includes('|')) {
+                                        plot.lastComment = data.split('|')[1].trim();
+                                    }
+                                }
+                                break;
+                            }
+                        }
+
                         if (plot.instance) {
                             decodePlotState(plot, false);
                         } else {
@@ -1903,8 +1933,14 @@
                         div.style.top = r.y + 'px';
                         div.style.width = r.w + 'px';
                         div.style.height = r.h + 'px';
-                        // Keep the checkmark visual
-                        div.innerHTML = `<span style="position:absolute;bottom:0;right:0;color:lime;font-size:10px;">✓</span>`;
+
+                        let html = `<span style="position:absolute;bottom:2px;right:2px;color:lime;font-size:8px;text-shadow:0 1px 2px #000;">✓</span>`;
+                        if (rent.comment) {
+                            html += `<div style="position:absolute;top:2px;left:2px;right:2px;font-size:5px;color:white;background:rgba(0,0,0,0.6);padding:1px 2px;border-radius:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90%; border:0.5px solid rgba(255,255,255,0.2);">${rent.comment}</div>`;
+                        } else {
+                            html += `<div style="position:absolute;top:2px;left:2px;font-size:5px;color:rgba(255,255,255,0.5);">${rent.blocksLeft} BLK</div>`;
+                        }
+                        div.innerHTML = html;
                         overlay.appendChild(div);
                     });
                 }
@@ -2442,9 +2478,15 @@
                 for (let q = 0; q < 4; q++) {
                     const exp = Number(plot.instance.rentEnds[q]);
                     if (exp > currentBlockHeight) {
+                        let comment = "";
+                        // If the head transaction was a rent for this specific quadrant, show its comment
+                        if (plot.lastOpReturn && plot.lastOpReturn.startsWith(`RENT_Q${q}_`)) {
+                            comment = plot.lastComment || "";
+                        }
                         plot.activeRents.push({
                             qIdx: q,
-                            blocksLeft: exp - currentBlockHeight
+                            blocksLeft: exp - currentBlockHeight,
+                            comment: comment
                         });
                     }
                 }

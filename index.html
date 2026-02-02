@@ -3139,6 +3139,7 @@ ${quadGrid}
                 }
 
                 addLog("Execution complete!", "success");
+                if (currentMode === 'rent') showRentedQuadrants();
                 await refreshWallet();
             } catch (e) {
                 addLog(`Execution Error: ${e.message}`, "error");
@@ -3227,7 +3228,7 @@ ${quadGrid}
                     errorQueue.push(err);
                 }
             }
-            updateQueueUI();
+            if (currentMode === 'rent') showRentedQuadrants();
         }
 
         async function executeRent(plot, qIdx, signer) {
@@ -3301,6 +3302,14 @@ ${quadGrid}
 
             plot.instance = txResult.next ? txResult.next.instance : plot.instance;
             plot.headId = txResult.tx.id;
+
+            // Update local comment state for immediate display
+            plot.lastOpReturn = opReturnData;
+            if (opReturnData.includes('|')) {
+                plot.lastComment = opReturnData.split('|')[1].trim();
+            } else {
+                plot.lastComment = "";
+            }
 
             return txResult.tx.id;
         }

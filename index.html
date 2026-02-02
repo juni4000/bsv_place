@@ -3142,7 +3142,7 @@ ${quadGrid}
         }
 
         async function executeRent(plot, qIdx, signer) {
-            const { bsv, PubKeyHash, toByteString, PixelPlot28 } = ScryptBundle;
+            const { bsv, PubKeyHash, toByteString, Utils, PixelPlot28 } = ScryptBundle;
             const wif = getWif();
             const priv = bsv.PrivateKey.fromWIF(wif);
             const pkh = priv.toAddress().hashBuffer.toString('hex');
@@ -3152,8 +3152,49 @@ ${quadGrid}
 
             addLog(`Renting Plot ${plot.index} Q${qIdx} for ${rentPeriod} blocks (${cost} sats)`);
 
-            // Use static builder
-            plot.instance.bindTxBuilder('rent', PixelPlot28.buildTxForRent);
+            // Ensure instance is connected
+            await plot.instance.connect(signer);
+
+            // Manual Builder to handle nLockTime and outputs order precisely
+            plot.instance.bindTxBuilder('rent', async (current, options, quadrant, renter, numBlocks, opReturnData) => {
+                const nextInstance = current.next();
+                const lt = BigInt(options.lockTime || 0);
+                nextInstance.renters[Number(quadrant)] = renter;
+                nextInstance.rentEnds[Number(quadrant)] = lt + numBlocks;
+
+                const cost = numBlocks * current.rentPricePerBlock;
+
+                let tx = new bsv.Transaction()
+                    .addInput(current.buildContractInput())
+                    .addOutput(new bsv.Transaction.Output({
+                        script: bsv.Script.fromHex(nextInstance.lockingScript.toHex()),
+                        satoshis: 1
+                    }))
+                    .addOutput(new bsv.Transaction.Output({
+                        script: bsv.Script.fromHex(Utils.buildPublicKeyHashScript(current.owner)),
+                        satoshis: Number(cost)
+                    }))
+                    .addOutput(new bsv.Transaction.Output({
+                        script: bsv.Script.fromHex(Utils.buildOpreturnScript(opReturnData)),
+                        satoshis: 0
+                    }));
+
+                if (options.lockTime !== undefined) {
+                    tx.nLockTime = Number(options.lockTime);
+                    // Enable nLockTime by setting sequence < MAX
+                    tx.inputs[0].sequenceNumber = 0xFFFFFFFE;
+                }
+
+                if (options.changeAddress) {
+                    tx.change(options.changeAddress);
+                }
+
+                return {
+                    tx,
+                    atInputIndex: 0,
+                    nexts: [{ instance: nextInstance, balance: 1, atOutputIndex: 0 }]
+                };
+            });
 
             const comment = document.getElementById('tx-comment').value.trim();
             const opReturnData = `RENT_Q${qIdx}_P${plot.index}_${rentPeriod}BLK${comment ? ' | ' + comment : ''}`;
@@ -3176,7 +3217,7 @@ ${quadGrid}
         }
 
         async function executeBatch(plot, list, signer) {
-            const { bsv, toByteString, PixelPlot28 } = ScryptBundle;
+            const { bsv, toByteString, Utils, PixelPlot28 } = ScryptBundle;
             const wif = getWif();
             const priv = bsv.PrivateKey.fromWIF(wif);
 
@@ -3189,8 +3230,92 @@ ${quadGrid}
 
             addLog(`Updating ${numUpdates} pixels on Plot ${plot.index}...`);
 
-            // Use static builder
-            plot.instance.bindTxBuilder('updatePixels', PixelPlot28.buildTxForUpdatePixels);
+            // Ensure connected
+            await plot.instance.connect(signer);
+
+            // Manual builder for updatePixels to handle nLockTime and ordered gains
+            plot.instance.bindTxBuilder('updatePixels', async (current, options, updates, numUpdates, opReturnData) => {
+                const nextInstance = current.next();
+                const lt = BigInt(options.lockTime || 0);
+
+                let ownerGain = 0n;
+                let renterGains = [0n, 0n, 0n, 0n];
+
+                // Simulate logic for outputs order
+                let pixelsInt = ScryptBundle.byteString2Int(current.pixels);
+                for (let i = 0; i < 30; i++) {
+                    if (BigInt(i) < numUpdates) {
+                        const u = updates[i];
+                        const idx = u.index;
+                        const color = u.color;
+                        const x = idx % 28n;
+                        const y = idx / 28n;
+                        const qIdx = Number((y / 14n) * 2n + (x / 14n));
+
+                        const rentEnd = current.rentEnds[qIdx];
+                        const isRented = lt < rentEnd;
+
+                        let price = 3n;
+                        if (color <= 1n) price = 1n;
+                        else if (color >= 28n) price = 5n;
+
+                        if (isRented) {
+                            ownerGain += 1n;
+                            renterGains[qIdx] += (price - 1n);
+                        } else {
+                            ownerGain += price;
+                        }
+
+                        const shift = idx * 5n;
+                        const currentBits = (pixelsInt >> shift) & 31n;
+                        pixelsInt = pixelsInt - (currentBits << shift) + (color << shift);
+                    }
+                }
+                nextInstance.pixels = ScryptBundle.int2ByteString(pixelsInt, 491n);
+
+                let tx = new bsv.Transaction()
+                    .addInput(current.buildContractInput())
+                    .addOutput(new bsv.Transaction.Output({
+                        script: bsv.Script.fromHex(nextInstance.lockingScript.toHex()),
+                        satoshis: 1
+                    }));
+
+                if (ownerGain > 0n) {
+                    tx.addOutput(new bsv.Transaction.Output({
+                        script: bsv.Script.fromHex(Utils.buildPublicKeyHashScript(current.owner)),
+                        satoshis: Number(ownerGain)
+                    }));
+                }
+
+                for (let q = 0; q < 4; q++) {
+                    if (renterGains[q] > 0n) {
+                        tx.addOutput(new bsv.Transaction.Output({
+                            script: bsv.Script.fromHex(Utils.buildPublicKeyHashScript(current.renters[q])),
+                            satoshis: Number(renterGains[q])
+                        }));
+                    }
+                }
+
+                tx.addOutput(new bsv.Transaction.Output({
+                    script: bsv.Script.fromHex(Utils.buildOpreturnScript(opReturnData)),
+                    satoshis: 0
+                }));
+
+                if (options.lockTime !== undefined) {
+                    tx.nLockTime = Number(options.lockTime);
+                    tx.inputs[0].sequenceNumber = 0xFFFFFFFE;
+                }
+
+                if (options.changeAddress) {
+                    tx.change(options.changeAddress);
+                }
+
+                return {
+                    tx,
+                    atInputIndex: 0,
+                    nexts: [{ instance: nextInstance, balance: 1, atOutputIndex: 0 }]
+                };
+            });
 
             const comment = document.getElementById('tx-comment').value.trim();
             const opReturnData = `UPDATE_${numUpdates}PX_PLOT${plot.index}${comment ? ' | ' + comment : ''}`;

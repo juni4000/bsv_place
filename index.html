@@ -1482,6 +1482,7 @@
                 }
 
                 console.log(`Iteration ${iter}: Checking ${toCheck.length} txids...`);
+                addLog(`Loop ${iter}: Checking ${toCheck.length} txids...`);
                 // Batch the spent check (Whatsonchain limit is 20)
                 let madeProgressInIter = false;
                 for (let b = 0; b < toCheck.length; b += 20) {
@@ -1495,6 +1496,7 @@
                             body: JSON.stringify({ utxos: batch })
                         });
 
+                        addLog(`Proxy Response: ${resp.status}`);
                         console.log(`Proxy response: ${resp.status}`);
                         if (!resp.ok) {
                             const errBody = await resp.text();
@@ -1503,6 +1505,7 @@
                         }
 
                         const data = await resp.json();
+                        addLog(`Got ${data.length} results.`);
                         console.log(`Batch result:`, data);
                         data.forEach((item, idx) => {
                             const originalIdx = batchIndices[idx];

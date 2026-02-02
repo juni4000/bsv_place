@@ -1,6 +1,8 @@
 module.exports = async (req, res) => {
     const { url } = req.query;
 
+    console.log(`Proxying ${req.method} to: ${url}`);
+
     if (!url) {
         return res.status(400).json({ error: 'Missing "url" query parameter' });
     }
@@ -14,12 +16,16 @@ module.exports = async (req, res) => {
         };
 
         if (req.method === 'POST') {
-            // Vercel body parser might have already parsed this into an object
-            options.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+            const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+            console.log(`POST Body length: ${bodyStr.length}`);
+            options.body = bodyStr;
         }
 
         const response = await fetch(url, options);
+        console.log(`Target response status: ${response.status}`);
+
         const data = await response.text();
+        console.log(`Target response data length: ${data.length}`);
 
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -27,7 +33,7 @@ module.exports = async (req, res) => {
 
         res.status(response.status).send(data);
     } catch (error) {
-        console.error('Proxy Error:', error);
+        console.error('Proxy Backend Error:', error);
         res.status(500).json({ error: 'Proxy implementation error', details: error.message });
     }
 };

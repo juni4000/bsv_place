@@ -1457,52 +1457,56 @@
         }
 
         async function fetchLatestTxidsBulk(txids) {
-            addLog(`Following ${txids.length} txids...`);
+            addLog(`Following ${txids.length} txids (bulk)...`);
             let current = [...txids];
-            const MAX_DEPTH = 50;
+            let finished = new Array(txids.length).fill(false);
 
-            // Helper to check spending of a single UTXO via GET
-            const checkSpentOne = async (txid) => {
-                try {
-                    const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/0/spent`;
-                    const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}&t=${Date.now()}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.spentIn && (data.spentIn.txid || data.spentIn.tx_hash)) {
-                            return data.spentIn.txid || data.spentIn.tx_hash;
-                        }
+            for (let iter = 0; iter < 50; iter++) {
+                const toCheck = [];
+                const checkIndices = [];
+                for (let i = 0; i < current.length; i++) {
+                    const id = current[i];
+                    if (!finished[i] && id && id.length === 64) {
+                        toCheck.push({ txid: id, vout: 0 });
+                        checkIndices.push(i);
+                    } else if (!finished[i]) {
+                        finished[i] = true;
                     }
-                    return null; // Not spent or error
-                } catch (e) { return null; }
-            };
-
-            for (let iter = 0; iter < MAX_DEPTH; iter++) {
-                // Find indices that need checking
-                const activeIndices = current.map((id, idx) => ({ id, idx })).filter(x => x.id && x.id.length === 64);
-                if (activeIndices.length === 0) break;
-
-                // Check them in batches
-                let progress = false;
-                const BATCH_SIZE = 5;
-
-                for (let i = 0; i < activeIndices.length; i += BATCH_SIZE) {
-                    const batch = activeIndices.slice(i, i + BATCH_SIZE);
-                    const results = await Promise.all(batch.map(item => checkSpentOne(item.id)));
-
-                    results.forEach((nextTxid, batchIdx) => {
-                        if (nextTxid) {
-                            current[batch[batchIdx].idx] = nextTxid;
-                            progress = true;
-                        }
-                    });
-
-                    // Tiny throttle
-                    await new Promise(r => setTimeout(r, 100));
                 }
 
-                if (!progress) break; // If no one moved, we are at heads
-            }
+                if (toCheck.length === 0) break;
 
+                // Batch the spent check (Whatsonchain limit is 20)
+                let madeProgressInIter = false;
+                for (let b = 0; b < toCheck.length; b += 20) {
+                    const batch = toCheck.slice(b, b + 20);
+                    const batchIndices = checkIndices.slice(b, b + 20);
+                    try {
+                        const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
+                        const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ utxos: batch })
+                        });
+
+                        if (!resp.ok) continue;
+
+                        const data = await resp.json();
+                        data.forEach((item, idx) => {
+                            const originalIdx = batchIndices[idx];
+                            if (item.spentIn && (item.spentIn.txid || item.spentIn.tx_hash)) {
+                                current[originalIdx] = item.spentIn.txid || item.spentIn.tx_hash;
+                                madeProgressInIter = true;
+                            } else {
+                                finished[originalIdx] = true;
+                            }
+                        });
+                    } catch (e) {
+                        console.error("Spent check error:", e);
+                    }
+                }
+                if (!madeProgressInIter) break;
+            }
             return current;
         }
 
@@ -1510,30 +1514,29 @@
             const cleanIds = [...new Set(txids.filter(id => id && id.length === 64))];
             if (cleanIds.length === 0) return {};
 
-            addLog(`Fetching ${cleanIds.length} HEXs via GET...`);
-            const map = {};
-            const BATCH_SIZE = 3; // Rate limit protection
+            addLog(`Fetching ${cleanIds.length} HEXs (bulk)...`);
+            try {
+                const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/txs/hex';
+                const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ txids: cleanIds })
+                });
 
-            for (let i = 0; i < cleanIds.length; i += BATCH_SIZE) {
-                const batch = cleanIds.slice(i, i + BATCH_SIZE);
-                await Promise.all(batch.map(async (txid) => {
-                    try {
-                        const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/hex`;
-                        const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`);
-                        if (res.ok) {
-                            const hex = await res.text();
-                            map[txid] = hex;
-                        } else {
-                            console.warn(`Failed to fetch hex for ${txid}`);
-                        }
-                    } catch (e) {
-                        console.error(`Error fetching hex for ${txid}`, e);
+                if (!resp.ok) return {};
+
+                const data = await resp.json();
+                const map = {};
+                data.forEach(item => {
+                    if (item && item.txid && item.hex) {
+                        map[item.txid] = item.hex;
                     }
-                }));
-                // Throttle
-                await new Promise(r => setTimeout(r, 200));
+                });
+                return map;
+            } catch (e) {
+                console.error("Hex fetch error:", e);
+                return {};
             }
-            return map;
         }
 
 
@@ -2668,13 +2671,16 @@ ${quadGrid}
 
         async function findHead(txid, outIdx = 0, userAddress = null) {
             try {
-                const url = `https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/out/${outIdx}/spent`;
-                const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}&t=${Date.now()}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.spentIn && (data.spentIn.txid || data.spentIn.tx_hash)) {
-                        return findHead(data.spentIn.txid || data.spentIn.tx_hash, 0, userAddress);
-                    }
+                const targetUrl = 'https://api.whatsonchain.com/v1/bsv/main/utxos/spent';
+                const resp = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ utxos: [{ txid, vout: outIdx }] })
+                });
+                const data = await resp.json();
+                const info = data[0];
+                if (info && info.spentIn) {
+                    return findHead(info.spentIn.txid || info.spentIn.tx_hash, 0, userAddress);
                 }
                 return txid;
             } catch (e) { return txid; }

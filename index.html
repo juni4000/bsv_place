@@ -1419,56 +1419,36 @@
             // 2. Fetch all transaction data in bulk
             addLog(`Fetching hex data...`);
             const txDataMap = await fetchBulkHexDirect(targetPlots.map(p => p.headId));
-            console.log("Hex data loaded. Count:", Object.keys(txDataMap).length);
+            console.log("Hex data keys count:", Object.keys(txDataMap).length);
 
-            // 3. Loop in chunks to prevent UI freeze
-            const chunkSize = 2; // Process 2 plots per frame
-            let processIndex = 0;
-
-            function processNextChunk() {
-                const chunkStart = processIndex;
-                const chunkEnd = Math.min(processIndex + chunkSize, targetPlots.length);
-
-                for (let i = chunkStart; i < chunkEnd; i++) {
-                    const plot = targetPlots[i];
-                    const hex = txDataMap[plot.headId];
-                    if (hex) {
-                        try {
-                            if (typeof hex !== 'string' || hex.length < 100) {
-                                throw new Error(`Invalid hex string: ${typeof hex === 'string' ? hex.substring(0, 50) : typeof hex}`);
-                            }
-                            // Using the bsv constructor directly on hex string. 
-                            // If it fails with 'forEach' of undefined, it might mean the scrypt-ts transaction parser is confused.
-                            const tx = new bsv.Transaction(hex);
-                            plot.instance = PixelPlot28.fromTx(tx, 0);
-
-                            if (plot.instance) {
-                                decodePlotState(plot, false);
-                            } else {
-                                throw new Error("instance is null after fromTx");
-                            }
-                        } catch (e) {
-                            console.error(`Failed to parse plot ${plot.index} for txid ${plot.headId}:`, e);
-                            addLog(`Plot ${plot.index} parse error: ${e.message}`, "error");
+            // 3. Process plots
+            for (let i = 0; i < targetPlots.length; i++) {
+                const plot = targetPlots[i];
+                const hex = txDataMap[plot.headId];
+                if (hex) {
+                    try {
+                        const cleanHex = (typeof hex === 'string') ? hex.trim() : (hex.hex || hex.tx_hex || "");
+                        if (!cleanHex || cleanHex === "[object Object]") {
+                            throw new Error(`Invalid hex type: ${typeof hex}`);
                         }
-                    }
-                }
 
-                processIndex += chunkSize;
-                if (processIndex < targetPlots.length) {
-                    requestAnimationFrame(processNextChunk);
+                        // Explicit fromHex call
+                        const tx = new bsv.Transaction().fromHex(cleanHex);
+                        plot.instance = PixelPlot28.fromTx(tx, 0);
+
+                        if (plot.instance) {
+                            decodePlotState(plot, false);
+                        } else {
+                            throw new Error("instance is null after fromTx");
+                        }
+                    } catch (e) {
+                        console.error(`Plot ${plot.index} Parse Error:`, e);
+                        addLog(`Plot ${plot.index} Error: ${e.message}`, "error");
+                    }
+                } else {
+                    console.warn(`Zero hex for plot ${plot.index}`);
                 }
             }
-
-            await new Promise(resolve => {
-                // Override the recursive 'processNextChunk' to resolve when done
-                const originalProcess = processNextChunk;
-                processNextChunk = function () {
-                    originalProcess();
-                    if (processIndex >= targetPlots.length) resolve();
-                }
-                processNextChunk();
-            });
         }
 
         async function fetchLatestTxidsBulk(txids) {
@@ -1552,21 +1532,27 @@
                     body: JSON.stringify({ txids: cleanIds })
                 });
 
-                addLog(`Hex Proxy Status: ${resp.status}`);
-                if (!resp.ok) {
-                    const err = await resp.text();
-                    console.error("Hex fetch error:", err);
-                    return {};
-                }
+                if (!resp.ok) return {};
 
                 const data = await resp.json();
                 addLog(`Received ${data.length} hexes.`);
 
                 const map = {};
-                // Whatsonchain returns an array of hex strings in the same order as inputs
                 cleanIds.forEach((txid, idx) => {
-                    if (data[idx]) {
-                        map[txid] = data[idx];
+                    const item = data[idx];
+                    if (item) {
+                        // WOC plural endpoint returns array of hex strings OR array of objects
+                        if (typeof item === 'string') {
+                            map[txid] = item;
+                        } else if (item.hex) {
+                            map[txid] = item.hex;
+                        } else if (item.txid && item.hex) {
+                            map[txid] = item.hex;
+                        } else {
+                            console.warn(`Unrecognized hex item for ${txid}:`, item);
+                            // If it has a .txid property matches our txid, try to find hex
+                            map[txid] = item.hex || item.tx_hex || item.toString();
+                        }
                     }
                 });
                 return map;
